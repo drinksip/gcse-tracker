@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>GCSE Revision Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0a0f1e; }
+select option { background: #111827; color: #e2e8f0; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #0a0f1e; }
+::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.5); cursor: pointer; }
+input:-webkit-autofill { -webkit-box-shadow: 0 0 0 30px #111827 inset !important; -webkit-text-fill-color: #e2e8f0 !important; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDVr3v8NK2U0kueAsJ_WcDcLyFUNk7k2T0",
+    authDomain: "gcse-tracker-4dd48.firebaseapp.com",
+    projectId: "gcse-tracker-4dd48",
+    storageBucket: "gcse-tracker-4dd48.firebasestorage.app",
+    messagingSenderId: "570623522939",
+    appId: "1:570623522939:web:5ac79d309dbe77df5ecade"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+
+  window.__firebase = {
+    async register(username, password) {
+      const email = username.trim().toLowerCase() + "@gcsetracker.app";
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await setDoc(doc(db, "users", cred.user.uid), { username: username.trim().toLowerCase(), timetable:{}, spec:{}, grades:{} });
+      return { uid: cred.user.uid, username: username.trim().toLowerCase() };
+    },
+    async login(username, password) {
+      const email = username.trim().toLowerCase() + "@gcsetracker.app";
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      const snap = await getDoc(doc(db, "users", cred.user.uid));
+      return { uid: cred.user.uid, username: username.trim().toLowerCase(), data: snap.exists() ? snap.data() : {} };
+    },
+    async logout() {
+      await signOut(auth);
+    },
+    async saveData(uid, data) {
+      await setDoc(doc(db, "users", uid), data, { merge: true });
+    },
+    async loadDoc(uid) {
+      const snap = await getDoc(doc(db, "users", uid));
+      return snap.exists() ? snap.data() : null;
+    },
+    onAuthChange(cb) {
+      return onAuthStateChanged(auth, cb);
+    }
+  };
+
+  window.dispatchEvent(new Event("firebaseReady"));
+</script>
+
+<script type="text/babel">
+const { useState, useCallback, useEffect, useRef } = React;
+
+const SUBJECTS = [
+  { id:"maths", name:"Maths", board:"Edexcel", color:"#4ade80", emoji:"📐", topics:[
+    { id:"m1", name:"Number", subtopics:["Types of number & BIDMAS","Fractions, decimals & percentages","Powers, roots & surds","Standard form","Bounds & error intervals","Ratio & proportion"] },
+    { id:"m2", name:"Algebra", subtopics:["Simplifying & expanding","Factorising","Solving linear equations","Solving quadratics","Simultaneous equations","Inequalities","Sequences (nth term)","Functions & composite functions","Algebraic proof"] },
+    { id:"m3", name:"Graphs", subtopics:["Straight line graphs (y=mx+c)","Quadratic & cubic graphs","Reciprocal & exponential graphs","Circle graphs","Transformations of graphs","Distance-time & velocity-time"] },
+    { id:"m4", name:"Ratio, Proportion & Rates", subtopics:["Direct & inverse proportion","Speed, distance, time","Density & pressure","Percentage change & reverse %","Growth & decay"] },
+    { id:"m5", name:"Geometry & Measures", subtopics:["Angles in polygons","Circle theorems","Area & perimeter","Volume & surface area","Pythagoras theorem","Trigonometry (SOH CAH TOA)","Sine & cosine rule","Vectors","Transformations","Loci & constructions"] },
+    { id:"m6", name:"Probability & Statistics", subtopics:["Basic probability","Tree diagrams","Venn diagrams","Frequency tables & averages","Cumulative frequency & box plots","Histograms","Scatter graphs & correlation"] },
+  ]},
+  { id:"biology", name:"Biology", board:"AQA", color:"#34d399", emoji:"🧬", topics:[
+    { id:"b1", name:"Cell Biology", subtopics:["Cell structure (prokaryotic/eukaryotic)","Cell division (mitosis & meiosis)","Cell transport (diffusion, osmosis, active transport)","Stem cells","Microscopy & cell size calculations"] },
+    { id:"b2", name:"Organisation", subtopics:["Digestive system & enzymes","Heart & blood vessels","Blood components","Lungs & gas exchange","Plant tissues & transport","Transpiration"] },
+    { id:"b3", name:"Infection & Response", subtopics:["Pathogens & disease","Immune response","Vaccination","Antibiotics & painkillers","Drug development & testing"] },
+    { id:"b4", name:"Bioenergetics", subtopics:["Photosynthesis (equation & limiting factors)","Aerobic respiration","Anaerobic respiration","Exercise & metabolism"] },
+    { id:"b5", name:"Homeostasis & Response", subtopics:["Nervous system (reflex arc)","Brain structure","Hormonal coordination","Blood glucose regulation (diabetes)","Thermoregulation","Reproductive hormones & contraception"] },
+    { id:"b6", name:"Inheritance & Evolution", subtopics:["DNA structure & protein synthesis","Genetic inheritance (Punnett squares)","Mutations","Natural selection & evolution","Classification","Extinction & biodiversity"] },
+    { id:"b7", name:"Ecology", subtopics:["Food chains & webs","Sampling techniques","Carbon cycle","Water cycle","Biodiversity & conservation","Human impact on environment"] },
+  ]},
+  { id:"chemistry", name:"Chemistry", board:"AQA", color:"#f87171", emoji:"⚗️", topics:[
+    { id:"c1", name:"Atomic Structure & the Periodic Table", subtopics:["Atomic structure (protons, neutrons, electrons)","Isotopes & relative atomic mass","Development of the periodic table","Electronic configuration","Metals & non-metals","Group 0, 1 & 7 properties","Transition metals"] },
+    { id:"c2", name:"Bonding, Structure & Properties", subtopics:["Ionic bonding & structure","Covalent bonding (simple & giant)","Metallic bonding","Allotropes of carbon","Polymers","Nanoparticles"] },
+    { id:"c3", name:"Quantitative Chemistry", subtopics:["Conservation of mass","Relative formula mass","Moles","Balancing equations","Percentage yield","Atom economy","Concentration calculations"] },
+    { id:"c4", name:"Chemical Changes", subtopics:["Reactivity series","Extraction of metals","Oxidation & reduction","Electrolysis","Acids & alkalis (pH, neutralisation)","Reactions of acids (salts production)","Strong vs weak acids"] },
+    { id:"c5", name:"Energy Changes", subtopics:["Exothermic & endothermic reactions","Bond energies & calculations","Reaction profiles","Hydrogen fuel cells"] },
+    { id:"c6", name:"Rate & Extent of Reaction", subtopics:["Factors affecting rate","Collision theory","Reversible reactions & equilibrium","Le Chateliers principle"] },
+    { id:"c7", name:"Organic Chemistry", subtopics:["Crude oil & hydrocarbons","Alkanes & combustion","Cracking","Alkenes & addition reactions","Polymers","Alcohols & carboxylic acids"] },
+    { id:"c8", name:"Chemical Analysis", subtopics:["Purity & formulations","Chromatography (Rf values)","Flame tests","Tests for gases & ions"] },
+    { id:"c9", name:"Chemistry of the Atmosphere", subtopics:["Evolution of the atmosphere","Greenhouse gases & climate change","Atmospheric pollutants"] },
+    { id:"c10", name:"Using Resources", subtopics:["Finite & renewable resources","Potable water treatment","Lifecycle assessment","Corrosion & alloys","The Haber process & NPK fertilisers"] },
+  ]},
+  { id:"physics", name:"Physics", board:"AQA", color:"#60a5fa", emoji:"⚡", topics:[
+    { id:"p1", name:"Energy", subtopics:["Energy stores & transfers","Conservation of energy","Kinetic & potential energy calculations","Specific heat capacity","Power & efficiency","Renewable & non-renewable energy sources"] },
+    { id:"p2", name:"Electricity", subtopics:["Circuit symbols & diagrams","Series & parallel circuits","Ohms law & resistance","I-V characteristics","Mains electricity & AC/DC","Power & energy calculations","Static electricity"] },
+    { id:"p3", name:"Particle Model of Matter", subtopics:["States of matter & particle model","Density calculations","Internal energy & temperature","Specific latent heat","Gas pressure & temperature"] },
+    { id:"p4", name:"Atomic Structure", subtopics:["Atomic structure & nuclear model","Radioactive decay (alpha, beta, gamma)","Half-life calculations","Background radiation","Fission & fusion","Uses & dangers of radiation"] },
+    { id:"p5", name:"Forces", subtopics:["Contact & non-contact forces","Resultant forces & free body diagrams","Newtons 3 laws","Momentum & conservation","Work done & energy","Stretching: Hookes law","Pressure in fluids","Moments & levers"] },
+    { id:"p6", name:"Waves", subtopics:["Transverse & longitudinal waves","Wave calculations (v=f x wavelength)","Reflection, refraction & EM spectrum","Sound waves","Colour & light","Black body radiation"] },
+    { id:"p7", name:"Magnetism & Electromagnetism", subtopics:["Magnets & magnetic fields","Electromagnetism (motor effect)","Flemings left-hand rule","Induced potential & generators","Transformers & the National Grid"] },
+  ]},
+  { id:"english", name:"English", board:"AQA", color:"#a78bfa", emoji:"📚", topics:[
+    { id:"en1", name:"Language Paper 1 - Imaginative Writing", subtopics:["Reading: Source analysis (structure & language)","Q2 - Language analysis (methods & effects)","Q3 - Structure analysis","Q4 - Evaluation","Q5 - Creative writing (narrative)","Q5 - Creative writing (description)"] },
+    { id:"en2", name:"Language Paper 2 - Writers Viewpoints", subtopics:["Reading: Two non-fiction sources","Q1 - True/false identification","Q2 - Summary & synthesis","Q3 - Language analysis (non-fiction)","Q4 - Comparing writers perspectives","Q5 - Non-fiction writing (article/letter/speech)"] },
+    { id:"en3", name:"Literature: Macbeth", subtopics:["Plot overview & timeline","Macbeths character arc","Lady Macbeth & power","Themes: ambition, guilt, fate","Key quotations (with context)","Context: Jacobean era & divine right"] },
+    { id:"en4", name:"Literature: A Christmas Carol", subtopics:["Scrooges transformation","The Ghosts (symbolism & purpose)","Themes: poverty, redemption, Christmas","Key quotations","Context: Victorian England & social reform"] },
+    { id:"en5", name:"Literature: Power & Conflict Poetry", subtopics:["Ozymandias","London","The Prelude","My Last Duchess","Charge of the Light Brigade","Exposure","Storm on the Island","Bayonet Charge","Remains","Poppies","War Photographer","Tissue","The Emigree","Checking Out Me History","Kamikaze","Unseen poetry techniques"] },
+    { id:"en6", name:"Literature: An Inspector Calls", subtopics:["Plot & structure","Character analysis","Themes: responsibility, class, age","Key quotations","Context: 1912 vs 1945 staging","Priestleys message"] },
+  ]},
+  { id:"rs", name:"Religious Studies", board:"Eduqas", color:"#fbbf24", emoji:"✝️", topics:[
+    { id:"rs1", name:"Christianity: Beliefs & Teachings", subtopics:["Nature of God (omnipotent, benevolent, omniscient)","The Trinity","Creation","Incarnation & Jesus's nature","Salvation & atonement","Life after death (Heaven, Hell, Purgatory)","The afterlife & resurrection"] },
+    { id:"rs2", name:"Christianity: Practices", subtopics:["Worship (liturgical & non-liturgical)","Prayer & the Lords Prayer","Sacraments (Baptism & Eucharist)","Pilgrimage","The Churchs role in the local community","Church & worldwide Church (food banks etc.)","Festivals: Christmas & Easter"] },
+    { id:"rs3", name:"Islam: Beliefs & Teachings", subtopics:["Nature of Allah (Tawhid)","The Six Beliefs (Sunni)","Five Roots of Usul ad-Din (Shia)","Prophethood (Risalah) & Muhammad","Holy Books (Quran & others)","Angels","Akhirah (life after death)","Predestination (Al-Qadr)"] },
+    { id:"rs4", name:"Islam: Practices", subtopics:["Five Pillars: Shahadah, Salah, Sawm, Zakah, Hajj","Jihad (greater & lesser)","Festivals: Id-ul-Adha & Id-ul-Fitr","10 Obligatory Acts (Shia)"] },
+    { id:"rs5", name:"Religion, Peace & Conflict", subtopics:["Just War theory","Holy War & pacifism","Weapons of mass destruction","Victims of war & forgiveness","Christian & Muslim views on war","Terrorism & religion"] },
+    { id:"rs6", name:"Religion, Life & Death", subtopics:["Origin of the universe (Big Bang & creation)","Value of the world & stewardship","Origins of human life","Abortion","Euthanasia","Death & afterlife beliefs (Christian & Muslim)"] },
+  ]},
+  { id:"german", name:"German", board:"AQA", color:"#fb923c", emoji:"🇩🇪", topics:[
+    { id:"g1", name:"Identity & Culture", subtopics:["Family relationships & marriage","Friendships","Social media & technology","Free time: sport & music","Customs & festivals","Food & daily routine"] },
+    { id:"g2", name:"Local, National & Global", subtopics:["Local area & environment","Describing your town","Healthy & unhealthy living","Poverty & homelessness","Global issues (environment, Fairtrade)","Weather & the natural world"] },
+    { id:"g3", name:"Current & Future Study / Employment", subtopics:["School subjects & opinions","Rules & uniform","Work experience","Career aspirations","Applying for jobs","Advantages of language learning"] },
+    { id:"g4", name:"Grammar", subtopics:["Nouns, gender & plurals","Cases: Nominative, Accusative, Dative, Genitive","Adjective endings","Pronouns","Present tense (regular & irregular)","Past tense: Perfekt","Past tense: Imperfekt","Future tense","Conditional","Modal verbs","Word order (V2, subordinate clauses)","Negatives (nicht & kein)"] },
+    { id:"g5", name:"Skills", subtopics:["Listening exam technique","Reading comprehension strategies","Writing: structured responses","Speaking: role play preparation","Speaking: photo card technique","Translation (German to English & English to German)"] },
+  ]},
+  { id:"geography", name:"Geography", board:"AQA", color:"#2dd4bf", emoji:"🌍", topics:[
+    { id:"geo1", name:"The Challenge of Natural Hazards", subtopics:["Tectonic hazards (earthquakes & volcanoes)","Plate boundaries & case studies","Weather hazards (tropical storms)","UK extreme weather","Climate change: evidence & causes","Climate change: effects & responses"] },
+    { id:"geo2", name:"The Living World", subtopics:["Ecosystems (small scale & global)","Tropical rainforests: structure & biodiversity","Tropical rainforests: deforestation & management","Hot deserts: characteristics & adaptations","Hot deserts: opportunities & challenges"] },
+    { id:"geo3", name:"Physical Landscapes in the UK", subtopics:["Coastal processes (erosion, deposition, transportation)","Coastal landforms","Coastal management","River processes & landforms","Flood management"] },
+    { id:"geo4", name:"Urban Issues & Challenges", subtopics:["Global urban growth & urbanisation","Megacities","Case study: LIC/NEE city (e.g. Rio)","Case study: UK city (e.g. Bristol)","Urban sustainability"] },
+    { id:"geo5", name:"The Changing Economic World", subtopics:["Development gap: indicators (HDI, GNI)","Causes of uneven development","Strategies to reduce the gap","NEE case study (e.g. Nigeria)","Economic change in the UK","UK post-industrial economy"] },
+    { id:"geo6", name:"The Challenge of Resource Management", subtopics:["Global resource management (food, water, energy)","Food in the UK & food security","Water in the UK & global water stress","Energy in the UK & energy security","Case study: large-scale energy scheme"] },
+    { id:"geo7", name:"Geographical Skills & Fieldwork", subtopics:["Atlas & map skills","OS map reading","Graph & statistical skills","Fieldwork: physical environment","Fieldwork: human environment","Evaluating geographical data"] },
+  ]},
+  { id:"cs", name:"Computer Science", board:"OCR", color:"#e879f9", emoji:"💻", topics:[
+    { id:"cs1", name:"Systems Architecture", subtopics:["CPU components (ALU, CU, registers, cache)","The fetch-decode-execute cycle","CPU performance (cores, clock speed, cache)","Embedded systems","Memory: RAM & ROM","Secondary storage (HDD, SSD, optical)"] },
+    { id:"cs2", name:"Memory & Storage", subtopics:["Units of data (bits, bytes to terabytes)","Binary arithmetic & overflow","Hexadecimal","Binary shifts","Characters: ASCII & Unicode","Images: pixels, resolution, colour depth","Sound: sampling rate & bit depth","Compression (lossy & lossless)"] },
+    { id:"cs3", name:"Computer Networks", subtopics:["Types of network (LAN, WAN, PAN)","Network topologies (star, bus, mesh)","Client-server & peer-to-peer","Wired & wireless (ethernet, Wi-Fi, Bluetooth)","Network protocols (TCP/IP, HTTP, HTTPS, FTP, DNS, SMTP)","The Internet vs WWW","Network security (firewalls, encryption)"] },
+    { id:"cs4", name:"Network Security", subtopics:["Types of attack (malware, phishing, SQL injection, DDoS)","Social engineering","Prevention methods","Encryption (Caesar cipher, symmetric, asymmetric)"] },
+    { id:"cs5", name:"Systems Software", subtopics:["Operating system functions","Memory management","Multitasking","Device drivers","Utility software","Translators: compiler, interpreter, assembler"] },
+    { id:"cs6", name:"Ethical, Legal & Environmental Impacts", subtopics:["Legislation (Data Protection Act, Computer Misuse Act, Copyright Act)","Ethical issues (privacy, AI, surveillance)","Environmental impacts","Open source vs proprietary software","Moral & cultural impact of technology"] },
+    { id:"cs7", name:"Algorithms", subtopics:["Computational thinking (decomposition, abstraction, pattern recognition)","Flowcharts & pseudocode","Linear & binary search","Bubble sort, merge sort, insertion sort","Big-O complexity (intro)","Standard algorithms (totalling, counting, max/min)"] },
+    { id:"cs8", name:"Programming", subtopics:["Variables, constants & data types","Input/output","Arithmetic & logical operators","Selection (if/elif/else)","Iteration (for, while loops)","String manipulation","List/array operations","Subroutines (functions & procedures)","File handling (read/write)","Exception handling","Structured programming"] },
+    { id:"cs9", name:"Databases & SQL", subtopics:["Database concepts & flat file vs relational","Primary & foreign keys","Entity relationship diagrams","SQL: SELECT, WHERE, ORDER BY, INSERT, UPDATE","Normalisation (1NF, 2NF, 3NF intro)"] },
+  ]},
+];
+
+// Extra subjects for timetable only (no spec tracker)
+const EXTRA_SUBJECTS = [
+  { id:"art",      name:"Art",           color:"#f472b6", emoji:"🎨" },
+  { id:"photo",    name:"Photography",   color:"#e879f9", emoji:"📷" },
+  { id:"business", name:"Business",      color:"#38bdf8", emoji:"💼" },
+  { id:"dance",    name:"Dance",         color:"#fb7185", emoji:"💃" },
+  { id:"drama",    name:"Drama",         color:"#c084fc", emoji:"🎭" },
+  { id:"pd",       name:"Product Design",color:"#94a3b8", emoji:"🔧" },
+  { id:"textiles", name:"Textiles",      color:"#f9a8d4", emoji:"🧵" },
+  { id:"food",     name:"Food",          color:"#fdba74", emoji:"🍳" },
+  { id:"history",  name:"History",       color:"#a3e635", emoji:"📜" },
+  { id:"media",    name:"Media Studies", color:"#67e8f9", emoji:"🎬" },
+  { id:"pe",       name:"PE Studies",    color:"#4ade80", emoji:"⚽" },
+  { id:"french",   name:"French",        color:"#60a5fa", emoji:"🇫🇷" },
+  { id:"music",    name:"Music",         color:"#fbbf24", emoji:"🎵" },
+  { id:"spanish",  name:"Spanish",       color:"#fb923c", emoji:"🇪🇸" },
+];
+const ALL_SUBJECTS = [...SUBJECTS, ...EXTRA_SUBJECTS];
+
+const DAYS=["Mon","Tue","Wed","Thu","Fri","Sat"];
+const SLOTS=["Daily habit / short task","Evening 1","Evening 2"];
+const COVERAGE_OPTIONS=["Not started","Covered in school","Covered by myself","Both"];
+const RAG_OPTIONS=["Red","Amber","Green"];
+const RAG_COLORS={Red:"#f87171",Amber:"#fbbf24",Green:"#4ade80"};
+const RAG_BG={Red:"rgba(248,113,113,0.12)",Amber:"rgba(251,191,36,0.10)",Green:"rgba(74,222,128,0.10)"};
+
+const S={
+  root:{fontFamily:"'IBM Plex Mono','Fira Code',monospace",background:"#0a0f1e",minHeight:"100vh",color:"#e2e8f0"},
+  header:{background:"linear-gradient(180deg,#0d1526 0%,#0a0f1e 100%)",borderBottom:"1px solid #1e293b",padding:"18px 24px 0",position:"sticky",top:0,zIndex:10},
+  headerInner:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:14,marginBottom:16},
+  title:{fontSize:20,fontWeight:700,color:"#f1f5f9",letterSpacing:-0.5},
+  subtitle:{fontSize:11,color:"#475569",letterSpacing:2,textTransform:"uppercase"},
+  tabBar:{display:"flex",gap:4},
+  tabBtn:{background:"transparent",border:"none",color:"#475569",padding:"10px 18px",cursor:"pointer",fontSize:13,fontFamily:"inherit",borderBottom:"2px solid transparent",transition:"all 0.15s"},
+  tabActive:{color:"#f1f5f9",borderBottomColor:"#60a5fa"},
+  body:{padding:"24px",maxWidth:1100,margin:"0 auto"},
+  sectionHeader:{fontSize:18,fontWeight:700,color:"#f1f5f9",marginBottom:4},
+  sectionSub:{color:"#475569",fontSize:12,marginBottom:20,marginTop:4},
+  card:{background:"#0d1526",border:"1px solid #1e293b",borderRadius:10,padding:"16px 18px",marginBottom:12},
+  cardTitle:{fontWeight:600,color:"#94a3b8",fontSize:13,textTransform:"uppercase",letterSpacing:1},
+  table:{width:"100%",borderCollapse:"collapse",fontSize:13},
+  th:{background:"#0d1526",padding:"10px 12px",color:"#64748b",fontWeight:600,textAlign:"left",borderBottom:"1px solid #1e293b",whiteSpace:"nowrap"},
+  td:{padding:"6px 8px",borderBottom:"1px solid #111827"},
+  tdLabel:{padding:"6px 12px",borderBottom:"1px solid #111827",color:"#64748b",fontSize:12,whiteSpace:"nowrap",background:"#0d1526"},
+  sel:{background:"#111827",border:"1px solid #1e293b",borderRadius:6,color:"#94a3b8",padding:"5px 8px",fontSize:12,fontFamily:"inherit",cursor:"pointer",width:"100%"},
+  gradeSel:{background:"#111827",border:"1px solid #1e293b",borderRadius:6,padding:"6px 10px",fontSize:16,fontWeight:700,fontFamily:"inherit",cursor:"pointer",textAlign:"center",width:52},
+  notesArea:{background:"#111827",border:"1px solid #1e293b",borderRadius:6,color:"#94a3b8",padding:"8px 10px",fontSize:12,fontFamily:"inherit",width:"100%",marginTop:12,resize:"vertical"},
+  progressTrack:{height:8,background:"#1e293b",borderRadius:4,overflow:"hidden",position:"relative"},
+  progressBar:{height:"100%",position:"absolute",top:0,transition:"width 0.4s ease",borderRadius:4},
+  subjBtn:{background:"transparent",border:"none",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",width:"100%",padding:0,fontFamily:"inherit"},
+  topicBlock:{background:"#0b1120",borderRadius:8,marginBottom:8,padding:"10px 12px",border:"1px solid #1e293b"},
+  topicBtn:{background:"transparent",border:"none",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",width:"100%",padding:0,fontFamily:"inherit"},
+  specHeader:{display:"flex",gap:8,padding:"4px 8px",fontSize:10,color:"#334155",textTransform:"uppercase",letterSpacing:1,borderBottom:"1px solid #1e293b"},
+  specRow:{display:"flex",gap:8,padding:"6px 8px",alignItems:"center",borderBottom:"1px solid #0f172a",borderRadius:4},
+  specSel:{background:"#111827",border:"1px solid #1e293b",borderRadius:5,color:"#94a3b8",padding:"4px 6px",fontSize:11,fontFamily:"inherit",cursor:"pointer"},
+  specDate:{background:"#111827",border:"1px solid #1e293b",borderRadius:5,color:"#64748b",padding:"4px 6px",fontSize:11,fontFamily:"inherit",colorScheme:"dark"},
+  input:{background:"#111827",border:"1px solid #1e293b",borderRadius:8,color:"#e2e8f0",padding:"10px 14px",fontSize:14,fontFamily:"inherit",width:"100%",outline:"none"},
+};
+
+function MiniProgress({prog}){
+  const g=(prog.green/prog.total)*100,a=(prog.amber/prog.total)*100;
+  return <div style={{width:60,height:6,background:"#1e293b",borderRadius:3,overflow:"hidden",display:"flex"}}><div style={{width:`${g}%`,background:"#4ade80",height:"100%"}}/><div style={{width:`${a}%`,background:"#fbbf24",height:"100%"}}/></div>;
+}
+
+// ─── LOGIN SCREEN ─────────────────────────────────────────────────────────────
+function LoginScreen({onLogin}){
+  const [username,setUsername]=useState("");
+  const [password,setPassword]=useState("");
+  const [error,setError]=useState("");
+  const [loading,setLoading]=useState(false);
+  const [fbReady,setFbReady]=useState(!!window.__firebase);
+
+  useEffect(()=>{
+    if(!window.__firebase){
+      const h=()=>setFbReady(true);
+      window.addEventListener("firebaseReady",h);
+      return()=>window.removeEventListener("firebaseReady",h);
+    }
+  },[]);
+
+  const friendly=(code)=>{
+    if(code==="auth/user-not-found"||code==="auth/invalid-credential")return"Username or password is incorrect.";
+    if(code==="auth/wrong-password")return"Wrong password.";
+    if(code==="auth/email-already-in-use")return"That username is already taken.";
+    if(code==="auth/weak-password")return"Password must be at least 6 characters.";
+    if(code==="auth/too-many-requests")return"Too many attempts. Please wait a moment.";
+    return"Something went wrong. Please try again.";
+  };
+
+  const handle=async(isRegister)=>{
+    if(!username.trim()||!password.trim()){setError("Please enter a username and password.");return;}
+    if(!fbReady){setError("Still connecting, please wait...");return;}
+    setLoading(true);setError("");
+    try{
+      if(isRegister){
+        const res=await window.__firebase.register(username,password);
+        onLogin(res.uid,res.username,{});
+      } else {
+        const res=await window.__firebase.login(username,password);
+        onLogin(res.uid,res.username,res.data);
+      }
+    } catch(e){
+      setError(friendly(e.code));
+    }
+    setLoading(false);
+  };
+
+  return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#0a0f1e"}}>
+    <div style={{background:"#0d1526",border:"1px solid #1e293b",borderRadius:16,padding:"40px 36px",width:"100%",maxWidth:380}}>
+      <div style={{textAlign:"center",marginBottom:28}}>
+        <div style={{fontSize:40,marginBottom:10}}>📋</div>
+        <div style={{fontSize:20,fontWeight:700,color:"#f1f5f9",fontFamily:"'IBM Plex Mono',monospace"}}>GCSE Revision Tracker</div>
+        <div style={{fontSize:11,color:"#475569",marginTop:4,letterSpacing:2,textTransform:"uppercase",fontFamily:"monospace"}}>Sign in or create an account</div>
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        <div>
+          <div style={{fontSize:11,color:"#64748b",marginBottom:5,fontFamily:"monospace",textTransform:"uppercase",letterSpacing:1}}>Username</div>
+          <input value={username} onChange={e=>setUsername(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle(false)}
+            placeholder="e.g. sid123" style={S.input} autoComplete="username"/>
+        </div>
+        <div>
+          <div style={{fontSize:11,color:"#64748b",marginBottom:5,fontFamily:"monospace",textTransform:"uppercase",letterSpacing:1}}>Password</div>
+          <input type="password" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle(false)}
+            placeholder="at least 6 characters" style={S.input} autoComplete="current-password"/>
+        </div>
+        {error&&<div style={{fontSize:12,color:"#f87171",background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:7,padding:"8px 12px",fontFamily:"monospace"}}>{error}</div>}
+        <button onClick={()=>handle(false)} disabled={loading} style={{background:"#1d4ed8",border:"none",borderRadius:8,color:"white",padding:"11px",fontSize:14,fontWeight:700,fontFamily:"inherit",cursor:"pointer",marginTop:4,opacity:loading?0.6:1}}>
+          {loading?"Loading...":"Log In"}
+        </button>
+        <button onClick={()=>handle(true)} disabled={loading} style={{background:"transparent",border:"1px solid #334155",borderRadius:8,color:"#94a3b8",padding:"11px",fontSize:14,fontFamily:"inherit",cursor:"pointer",opacity:loading?0.6:1}}>
+          Register new account
+        </button>
+      </div>
+      <div style={{fontSize:10,color:"#334155",textAlign:"center",marginTop:20,fontFamily:"monospace",lineHeight:1.6}}>
+        Passwords are encrypted by Google · Choose any username
+      </div>
+    </div>
+  </div>;
+}
+
+// ─── TIMETABLE ────────────────────────────────────────────────────────────────
+function Timetable({timetable,setTimetable}){
+  const [showSel,setShowSel]=useState(true);
+  const setSlot=(day,slot,vals)=>setTimetable(p=>({...p,[`${day}__${slot}`]:vals}));
+  const getSlot=(day,slot)=>{const v=timetable[`${day}__${slot}`];if(!v)return[];if(Array.isArray(v))return v;return v?[v]:[];};
+  const counts={};
+  Object.values(timetable).forEach(v=>{const arr=Array.isArray(v)?v:(v?[v]:[]);arr.forEach(id=>{if(id)counts[id]=(counts[id]||0)+1;});});
+  return <div>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+      <div style={S.sectionHeader}>Weekly Study Planner</div>
+      <button onClick={()=>setShowSel(p=>!p)} style={{background:"#1e293b",border:"1px solid #334155",borderRadius:7,color:"#94a3b8",padding:"5px 14px",cursor:"pointer",fontSize:12,fontFamily:"inherit"}}>
+        {showSel?"🙈 Hide selectors":"✏️ Edit timetable"}
+      </button>
+    </div>
+    <p style={S.sectionSub}>Mon-Sat · Hold Ctrl (or Cmd on Mac) to select multiple subjects per cell.</p>
+    <div style={{marginBottom:16}}>
+      <table style={S.table}><thead><tr>
+        <th style={S.th}>Day</th>
+        {SLOTS.map(slot=><th key={slot} style={S.th}>{slot}</th>)}
+      </tr></thead><tbody>
+        {DAYS.map(day=><tr key={day}>
+          <td style={S.tdLabel}>{day}</td>
+          {SLOTS.map(slot=>{
+            const vals=getSlot(day,slot);
+            const borderCol=vals.length===1?ALL_SUBJECTS.find(s=>s.id===vals[0])?.color:vals.length>1?"#94a3b8":undefined;
+            return <td key={slot} style={{...S.td,verticalAlign:"top"}}>
+              {showSel&&<select multiple value={vals} onChange={e=>{const sel=Array.from(e.target.selectedOptions).map(o=>o.value);setSlot(day,slot,sel);}}
+                style={{...S.sel,height:"112px",width:"100%",fontSize:12,...(borderCol?{borderColor:borderCol}:{})}}>
+                {ALL_SUBJECTS.map(s=>{const sel=vals.includes(s.id);return <option key={s.id} value={s.id} style={{color:sel?s.color:"#94a3b8",background:sel?s.color+"22":"#111827",fontWeight:sel?700:400,padding:"4px 6px"}}>{s.emoji} {s.name}</option>;})}
+              </select>}
+              {vals.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:3,marginTop:showSel?6:0}}>
+                {vals.map(id=>{const s=ALL_SUBJECTS.find(x=>x.id===id);return s?<span key={id} style={{fontSize:11,background:s.color+"22",color:s.color,borderRadius:5,padding:"2px 7px",border:`1px solid ${s.color}44`}}>{s.emoji} {s.name}</span>:null;})}
+              </div>}
+              {vals.length===0&&!showSel&&<span style={{color:"#334155",fontSize:11}}>—</span>}
+            </td>;
+          })}
+        </tr>)}
+      </tbody></table>
+    </div>
+    <div style={S.card}>
+      <div style={S.cardTitle}>This week's focus</div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:8,marginTop:12}}>
+        {ALL_SUBJECTS.filter(s=>(counts[s.id]||0)>0).map(s=>{const c=counts[s.id];return <div key={s.id} style={{display:"flex",alignItems:"center",gap:6,background:s.color+"15",border:`1px solid ${s.color}40`,borderRadius:8,padding:"4px 10px"}}>
+          <span>{s.emoji}</span><span style={{color:"#e2e8f0",fontSize:13}}>{s.name}</span><span style={{color:s.color,fontWeight:700,fontSize:13}}>{c}x</span>
+        </div>;})}
+        {Object.keys(counts).length===0&&<span style={{color:"#334155",fontSize:12}}>No subjects assigned yet — fill in the timetable above.</span>}
+      </div>
+    </div>
+  </div>;
+}
+
+// ─── GRADES ───────────────────────────────────────────────────────────────────
+function Grades({grades,setGrades,getProgress}){
+  const setGrade=(id,field,val)=>setGrades(p=>({...p,[id]:{...(p[id]||{}),[field]:val}}));
+  const getGrade=id=>grades[id]||{target:"",mock:"",predicted:"",notes:""};
+  return <div>
+    <div style={S.sectionHeader}>Grade Tracker</div>
+    <p style={S.sectionSub}>Set your target, log mock results and predicted grades.</p>
+    <div style={{display:"grid",gap:16}}>
+      {SUBJECTS.map(s=>{
+        const g=getGrade(s.id);const prog=getProgress(s.id);
+        const gPct=Math.round((prog.green/prog.total)*100);const aPct=Math.round((prog.amber/prog.total)*100);
+        return <div key={s.id} style={{...S.card,borderLeft:`3px solid ${s.color}`}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:22}}>{s.emoji}</span>
+              <div><div style={{fontWeight:700,color:"#f1f5f9",fontSize:15}}>{s.name}</div><div style={{color:"#64748b",fontSize:12}}>{s.board}</div></div>
+            </div>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              {["target","mock","predicted"].map(field=><div key={field} style={{textAlign:"center"}}>
+                <div style={{color:"#64748b",fontSize:11,marginBottom:3,textTransform:"uppercase",letterSpacing:1}}>{field}</div>
+                <select value={g[field]} onChange={e=>setGrade(s.id,field,e.target.value)} style={{...S.gradeSel,color:s.color}}>
+                  <option value="">-</option>
+                  {["U","1","2","3","4","5","6","7","8","9"].map(n=><option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>)}
+            </div>
+          </div>
+          <div style={{marginTop:14}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
+              <span style={{color:"#94a3b8",fontSize:12}}>Spec coverage (RAG)</span>
+              <span style={{color:"#94a3b8",fontSize:12}}>{prog.green}/{prog.total} green</span>
+            </div>
+            <div style={S.progressTrack}>
+              <div style={{...S.progressBar,width:`${gPct}%`,background:"#4ade80"}}/>
+              <div style={{...S.progressBar,width:`${aPct}%`,background:"#fbbf24",left:`${gPct}%`}}/>
+            </div>
+            <div style={{display:"flex",gap:12,marginTop:5}}>
+              {[["🟢",prog.green,"#4ade80"],["🟡",prog.amber,"#fbbf24"],["🔴",prog.red,"#f87171"]].map(([icon,n,c])=><span key={icon} style={{fontSize:11,color:c}}>{icon} {n}</span>)}
+            </div>
+          </div>
+          <textarea placeholder="Notes..." value={g.notes} onChange={e=>setGrade(s.id,"notes",e.target.value)} style={S.notesArea} rows={2}/>
+        </div>;
+      })}
+    </div>
+  </div>;
+}
+
+// ─── SPEC TRACKER ─────────────────────────────────────────────────────────────
+function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getProgress}){
+  const toggleTopic=id=>setExpTopic(p=>({...p,[id]:!p[id]}));
+  return <div>
+    <div style={S.sectionHeader}>Spec Tracker</div>
+    <p style={S.sectionSub}>Click a subject to expand, then a topic to see all subtopics.</p>
+    <div style={{display:"grid",gap:12}}>
+      {SUBJECTS.map(s=>{
+        const prog=getProgress(s.id);const gPct=Math.round((prog.green/prog.total)*100);const open=expSubj===s.id;
+        return <div key={s.id} style={{...S.card,borderLeft:`3px solid ${s.color}`}}>
+          <button style={S.subjBtn} onClick={()=>setExpSubj(open?null:s.id)}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:20}}>{s.emoji}</span>
+              <div style={{textAlign:"left"}}>
+                <div style={{fontWeight:700,color:"#f1f5f9",fontSize:14}}>{s.name}</div>
+                <div style={{color:"#64748b",fontSize:11}}>{s.board} · {prog.total} subtopics</div>
+              </div>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:12}}>
+              <div style={{textAlign:"right"}}>
+                <div style={{color:s.color,fontWeight:700,fontSize:15}}>{gPct}%</div>
+                <div style={{color:"#475569",fontSize:11}}>green</div>
+              </div>
+              <MiniProgress prog={prog}/>
+              <span style={{color:"#475569",fontSize:18}}>{open?"▲":"▼"}</span>
+            </div>
+          </button>
+          {open&&<div style={{marginTop:12}}>
+            {s.topics.map(t=>{
+              const tOpen=expTopic[t.id];
+              const tGreen=t.subtopics.filter((_,i)=>getVal(s.id,t.id,i).rag==="Green").length;
+              return <div key={t.id} style={S.topicBlock}>
+                <button style={S.topicBtn} onClick={()=>toggleTopic(t.id)}>
+                  <span style={{color:"#cbd5e1",fontWeight:600,fontSize:13}}>{t.name}</span>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:11,color:"#4ade80"}}>✓ {tGreen}/{t.subtopics.length}</span>
+                    <span style={{color:"#475569",fontSize:14}}>{tOpen?"▲":"▼"}</span>
+                  </div>
+                </button>
+                {tOpen&&<div style={{marginTop:8}}>
+                  <div style={S.specHeader}>
+                    <span style={{flex:3}}>Subtopic</span>
+                    <span style={{flex:2}}>Coverage</span>
+                    <span style={{flex:1,textAlign:"center"}}>RAG</span>
+                    <span style={{flex:2}}>Last revised</span>
+                  </div>
+                  {t.subtopics.map((st,i)=>{
+                    const v=getVal(s.id,t.id,i);
+                    return <div key={i} style={{...S.specRow,background:RAG_BG[v.rag]||"transparent"}}>
+                      <span style={{flex:3,color:"#cbd5e1",fontSize:12,paddingRight:8}}>{st}</span>
+                      <select value={v.coverage} onChange={e=>setVal(s.id,t.id,i,"coverage",e.target.value)} style={{...S.specSel,flex:2}}>
+                        {COVERAGE_OPTIONS.map(o=><option key={o} value={o}>{o}</option>)}
+                      </select>
+                      <div style={{flex:1,display:"flex",justifyContent:"center",gap:4}}>
+                        {RAG_OPTIONS.map(r=><button key={r} title={r} onClick={()=>setVal(s.id,t.id,i,"rag",r)} style={{
+                          width:14,height:14,borderRadius:"50%",background:RAG_COLORS[r],
+                          border:v.rag===r?"2px solid white":"2px solid transparent",
+                          cursor:"pointer",padding:0,flexShrink:0,
+                          boxShadow:v.rag===r?`0 0 6px ${RAG_COLORS[r]}`:"none"
+                        }}/>)}
+                      </div>
+                      <input type="date" value={v.date} onChange={e=>setVal(s.id,t.id,i,"date",e.target.value)} style={{...S.specDate,flex:2}}/>
+                    </div>;
+                  })}
+                </div>}
+              </div>;
+            })}
+          </div>}
+        </div>;
+      })}
+    </div>
+  </div>;
+}
+
+// ─── MAIN APP ─────────────────────────────────────────────────────────────────
+function App(){
+  const [user,setUser]=useState(null); // {uid, username}
+  const [tab,setTab]=useState("timetable");
+  const [timetable,setTimetableRaw]=useState({});
+  const [subtopicData,setSubtopicDataRaw]=useState({});
+  const [grades,setGradesRaw]=useState({});
+  const [expSubj,setExpSubj]=useState(null);
+  const [expTopic,setExpTopic]=useState({});
+  const [saving,setSaving]=useState(false);
+  const [saveMsg,setSaveMsg]=useState("");
+  const [checking,setChecking]=useState(true);
+  const saveTimer=useRef(null);
+
+  // Auto-restore session on page load
+  useEffect(()=>{
+    const tryRestore=()=>{
+      if(!window.__firebase){
+        window.addEventListener("firebaseReady",tryRestore,{once:true});
+        return;
+      }
+      const unsub=window.__firebase.onAuthChange(async(fbUser)=>{
+        if(fbUser){
+          try{
+            const snap=await window.__firebase.loadDoc(fbUser.uid);
+            if(snap){
+              setTimetableRaw(snap.timetable||{});
+              setSubtopicDataRaw(snap.spec||{});
+              setGradesRaw(snap.grades||{});
+              const uname=snap.username||fbUser.email.replace("@gcsetracker.app","");
+              setUser({uid:fbUser.uid,username:uname});
+            }
+          }catch(e){console.error(e);}
+        }
+        setChecking(false);
+      });
+      return unsub;
+    };
+    const unsub=tryRestore();
+    return()=>{ if(typeof unsub==="function") unsub(); };
+  },[]);
+
+  const saveToFirebase=useCallback(async(uid,tt,spec,gr)=>{
+    if(!uid||!window.__firebase)return;
+    setSaving(true);
+    await window.__firebase.saveData(uid,{timetable:tt,spec,grades:gr});
+    setSaving(false);setSaveMsg("Saved ✓");
+    setTimeout(()=>setSaveMsg(""),2000);
+  },[]);
+
+  const debouncedSave=useCallback((uid,tt,spec,gr)=>{
+    clearTimeout(saveTimer.current);
+    saveTimer.current=setTimeout(()=>saveToFirebase(uid,tt,spec,gr),1500);
+  },[saveToFirebase]);
+
+  const setTimetable=v=>{const next=typeof v==="function"?v(timetable):v;setTimetableRaw(next);if(user)debouncedSave(user.uid,next,subtopicData,grades);};
+  const setSubtopicData=v=>{const next=typeof v==="function"?v(subtopicData):v;setSubtopicDataRaw(next);if(user)debouncedSave(user.uid,timetable,next,grades);};
+  const setGrades=v=>{const next=typeof v==="function"?v(grades):v;setGradesRaw(next);if(user)debouncedSave(user.uid,timetable,subtopicData,next);};
+
+  const handleLogin=(uid,username,data)=>{
+    setTimetableRaw(data.timetable||{});
+    setSubtopicDataRaw(data.spec||{});
+    setGradesRaw(data.grades||{});
+    setUser({uid,username});
+  };
+
+  const handleLogout=async()=>{
+    await window.__firebase.logout();
+    setUser(null);setTimetableRaw({});setSubtopicDataRaw({});setGradesRaw({});
+  };
+
+  const getVal=(sId,tId,i)=>subtopicData[`${sId}__${tId}__${i}`]||{coverage:"Not started",rag:"Red",date:""};
+  const setVal=(sId,tId,i,field,value)=>{const k=`${sId}__${tId}__${i}`;setSubtopicData(p=>({...p,[k]:{...getVal(sId,tId,i),[field]:value}}));};
+  const getProgress=(sId)=>{
+    const subj=SUBJECTS.find(s=>s.id===sId);let total=0,green=0,amber=0;
+    subj.topics.forEach(t=>t.subtopics.forEach((_,i)=>{total++;const v=getVal(sId,t.id,i);if(v.rag==="Green")green++;else if(v.rag==="Amber")amber++;}));
+    return{total,green,amber,red:total-green-amber};
+  };
+
+  if(checking) return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#0a0f1e",color:"#475569",fontFamily:"monospace",fontSize:13}}>Connecting...</div>;
+  if(!user) return <LoginScreen onLogin={handleLogin}/>;
+
+  return <div style={S.root}>
+    <div style={S.header}>
+      <div style={S.headerInner}>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <span style={{fontSize:32}}>📋</span>
+          <div>
+            <div style={S.title}>GCSE Revision Tracker</div>
+            <div style={S.subtitle}>Exams: May-Jun 2027 · Target: All 9s</div>
+          </div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          {saveMsg&&<span style={{fontSize:11,color:"#4ade80",fontFamily:"monospace"}}>{saveMsg}</span>}
+          {saving&&<span style={{fontSize:11,color:"#64748b",fontFamily:"monospace"}}>Saving...</span>}
+          <span style={{fontSize:12,color:"#475569",fontFamily:"monospace"}}>👤 {user.username}</span>
+          <button onClick={handleLogout} style={{background:"transparent",border:"1px solid #334155",borderRadius:6,color:"#64748b",padding:"4px 10px",cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>
+            Log out
+          </button>
+        </div>
+      </div>
+      <div style={S.tabBar}>
+        {[["timetable","📅 Timetable"],["grades","📊 Grades"],["spec","📖 Spec Tracker"]].map(([id,label])=>
+          <button key={id} style={{...S.tabBtn,...(tab===id?S.tabActive:{})}} onClick={()=>setTab(id)}>{label}</button>
+        )}
+      </div>
+    </div>
+    <div style={S.body}>
+      {tab==="timetable"&&<Timetable timetable={timetable} setTimetable={setTimetable}/>}
+      {tab==="grades"&&<Grades grades={grades} setGrades={setGrades} getProgress={getProgress}/>}
+      {tab==="spec"&&<SpecTracker expSubj={expSubj} setExpSubj={setExpSubj} expTopic={expTopic} setExpTopic={setExpTopic} getVal={getVal} setVal={setVal} getProgress={getProgress}/>}
+    </div>
+  </div>;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
