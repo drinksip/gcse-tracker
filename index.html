@@ -285,26 +285,51 @@ function LoginScreen({onLogin}){
   </div>;
 }
 
-// ─── SETTINGS PANEL ───────────────────────────────────────────────────────────
+// ─── AI SETUP PANEL ───────────────────────────────────────────────────────────
 function Settings({geminiKey,setGeminiKey,onSave,onClose}){
   const [key,setKey]=useState(geminiKey||"");
   const [saved,setSaved]=useState(false);
+  const [showSteps,setShowSteps]=useState(false);
   const save=()=>{setGeminiKey(key);onSave(key);setSaved(true);setTimeout(()=>setSaved(false),2000);};
-  return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}>
-    <div style={{background:"#0d1526",border:"1px solid #1e293b",borderRadius:16,padding:"32px",width:"100%",maxWidth:480}}>
+  return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+    <div style={{background:"#0d1526",border:"1px solid #1e293b",borderRadius:16,padding:"32px",width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-        <div style={{fontSize:16,fontWeight:700,color:"#f1f5f9"}}>⚙️ Settings</div>
+        <div style={{fontSize:16,fontWeight:700,color:"#f1f5f9"}}>🤖 AI Setup</div>
         <button onClick={onClose} style={{...S.btn,padding:"4px 10px"}}>✕ Close</button>
       </div>
-      <div style={{marginBottom:24}}>
-        <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1",marginBottom:8}}>🤖 AI Features (Gemini)</div>
-        <div style={{fontSize:12,color:"#475569",marginBottom:12,lineHeight:1.6}}>
-          To unlock AI features (timetable optimiser, study coach, smart advice), add your free Gemini API key.<br/>
-          Get one free at <span style={{color:"#60a5fa"}}>aistudio.google.com</span> → Get API key (takes 2 mins, no card needed).
-        </div>
-        <input value={key} onChange={e=>setKey(e.target.value)} placeholder="AIza..." style={{...S.input,fontSize:12,marginBottom:8}}/>
+      <div style={{fontSize:12,color:"#94a3b8",marginBottom:16,lineHeight:1.7}}>
+        Add your free Gemini API key to unlock the AI Timetable Optimiser and AI Study Coach. It takes about 2 minutes and requires no payment.
+      </div>
+      <div style={{background:"#0b1120",border:"1px solid #1e293b",borderRadius:10,padding:16,marginBottom:16}}>
+        <button onClick={()=>setShowSteps(p=>!p)} style={{...S.btn,width:"100%",textAlign:"left",display:"flex",justifyContent:"space-between",padding:"8px 12px"}}>
+          <span>📋 Step-by-step instructions</span><span>{showSteps?"▲":"▼"}</span>
+        </button>
+        {showSteps&&<div style={{marginTop:14,display:"flex",flexDirection:"column",gap:10}}>
+          {[
+            ["1","Go to Google AI Studio","Click the link below to open Google AI Studio. Sign in with any Google account."],
+            ["2","Click "Get API key"","In the top-left menu or on the homepage, click Get API key."],
+            ["3","Create a new API key","Click Create API key, then choose Create API key in new project. It generates instantly."],
+            ["4","Copy the key","Click the copy icon next to your new key (starts with AIza...)."],
+            ["5","Paste it below","Paste it into the box below and click Save API Key."],
+          ].map(([n,title,desc])=><div key={n} style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+            <div style={{width:22,height:22,borderRadius:"50%",background:"#1d4ed8",color:"white",fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>{n}</div>
+            <div>
+              <div style={{fontSize:12,fontWeight:600,color:"#f1f5f9",marginBottom:2}}>{title}</div>
+              <div style={{fontSize:11,color:"#64748b",lineHeight:1.5}}>{desc}</div>
+            </div>
+          </div>)}
+          <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer"
+            style={{display:"inline-block",marginTop:4,background:"#1d4ed8",color:"white",borderRadius:7,padding:"8px 16px",fontSize:12,fontWeight:700,textDecoration:"none",textAlign:"center"}}>
+            🔗 Open Google AI Studio →
+          </a>
+        </div>}
+      </div>
+      <div style={{fontSize:11,color:"#64748b",marginBottom:6}}>Paste your API key here:</div>
+      <input value={key} onChange={e=>setKey(e.target.value)} placeholder="AIza..." style={{...S.input,fontSize:12,marginBottom:10}}/>
+      <div style={{display:"flex",alignItems:"center",gap:10}}>
         <button onClick={save} style={{...S.btnBlue,fontSize:12,padding:"8px 16px"}}>{saved?"✓ Saved!":"Save API Key"}</button>
-        {key&&<span style={{fontSize:11,color:"#4ade80",marginLeft:10}}>✓ AI features active</span>}
+        {key&&<span style={{fontSize:11,color:"#4ade80"}}>✓ AI features active</span>}
+        {!key&&<span style={{fontSize:11,color:"#475569"}}>No key set — AI features disabled</span>}
       </div>
     </div>
   </div>;
@@ -395,7 +420,10 @@ Please suggest an optimised weekly timetable for this student. For each day list
   return <div>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
       <div style={S.sectionHeader}>Weekly Study Planner</div>
-      <button onClick={()=>setShowSel(p=>!p)} style={S.btn}>{showSel?"🙈 Hide selectors":"✏️ Edit timetable"}</button>
+      <div style={{display:"flex",gap:8}}>
+        <button onClick={()=>{if(window.confirm("Reset your entire timetable? This cannot be undone."))setTimetable({});}} style={{...S.btn,color:"#f87171",borderColor:"rgba(248,113,113,0.3)"}}>🗑 Reset</button>
+        <button onClick={()=>setShowSel(p=>!p)} style={S.btn}>{showSel?"🙈 Hide selectors":"✏️ Edit timetable"}</button>
+      </div>
     </div>
     <p style={{color:"#475569",fontSize:12,marginBottom:16,marginTop:4}}>Mon-Sat · Hold Ctrl (or Cmd on Mac) to select multiple subjects per cell.</p>
 
@@ -659,22 +687,46 @@ function Grades({grades,setGrades,getProgress,assignedSubjectIds}){
 }
 
 // ─── SPEC TRACKER ─────────────────────────────────────────────────────────────
-function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getProgress,assignedSubjectIds,user}){
+function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getProgress,assignedSubjectIds,user,specRequests,setSpecRequests}){
   const toggleTopic=id=>setExpTopic(p=>({...p,[id]:!p[id]}));
   const [reqBoard,setReqBoard]=useState({});
-  const [reqSent,setReqSent]=useState({});
+  const [confirming,setConfirming]=useState(null); // subjectId being confirmed
 
   const visibleSubjects=ALL_SUBJECTS.filter(s=>assignedSubjectIds.includes(s.id));
   const subjectsWithSpec=visibleSubjects.filter(s=>SUBJECTS.find(x=>x.id===s.id));
   const subjectsWithoutSpec=visibleSubjects.filter(s=>!SUBJECTS.find(x=>x.id===s.id));
 
-  const sendRequest=async(s)=>{
-    if(!reqBoard[s.id]?.trim()){return;}
+  const alreadySent=(sId)=>(specRequests||[]).includes(sId);
+
+  const confirmRequest=(s)=>{
+    if(!reqBoard[s.id]?.trim())return;
+    setConfirming(s);
+  };
+
+  const sendRequest=async()=>{
+    const s=confirming;if(!s)return;
     await window.__firebase.sendSpecRequest(user.username,s.id,s.name,reqBoard[s.id]);
-    setReqSent(p=>({...p,[s.id]:true}));
+    const updated=[...(specRequests||[]),s.id];
+    setSpecRequests(updated);
+    setConfirming(null);
   };
 
   return <div>
+    {confirming&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{background:"#0d1526",border:"1px solid #1e293b",borderRadius:16,padding:"28px",width:"100%",maxWidth:420}}>
+        <div style={{fontSize:15,fontWeight:700,color:"#f1f5f9",marginBottom:12}}>📨 Confirm spec request</div>
+        <div style={{fontSize:13,color:"#94a3b8",marginBottom:6}}>You're requesting the spec for:</div>
+        <div style={{background:"#0b1120",borderRadius:8,padding:"10px 14px",marginBottom:6}}>
+          <div style={{fontWeight:700,color:"#f1f5f9"}}>{confirming.emoji} {confirming.name}</div>
+          <div style={{color:"#64748b",fontSize:12,marginTop:2}}>Exam board: <span style={{color:"#e2e8f0"}}>{reqBoard[confirming.id]}</span></div>
+        </div>
+        <div style={{fontSize:11,color:"#475569",marginBottom:16,lineHeight:1.5}}>This sends a request to the site owner. You can only send one request per subject. The spec will be added to the tracker once it's ready.</div>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={sendRequest} style={{...S.btnGreen,flex:1,textAlign:"center"}}>✓ Yes, send request</button>
+          <button onClick={()=>setConfirming(null)} style={{...S.btn,flex:1,textAlign:"center"}}>Cancel</button>
+        </div>
+      </div>
+    </div>}
     <div style={S.sectionHeader}>Spec Tracker</div>
     <p style={{color:"#475569",fontSize:12,marginBottom:20,marginTop:4}}>Only subjects assigned in your timetable appear here.</p>
     {visibleSubjects.length===0&&<div style={{...S.card,color:"#475569",fontSize:13}}>No subjects assigned yet — go to the Timetable tab first.</div>}
@@ -753,10 +805,10 @@ function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getP
           </div>
           <div style={{background:"#0b1120",borderRadius:8,padding:14,border:"1px solid #1e293b"}}>
             <div style={{fontSize:12,color:"#64748b",marginBottom:10}}>No exam board spec found for this subject yet.</div>
-            {reqSent[s.id]?<div style={{fontSize:12,color:"#4ade80"}}>✓ Request sent! The spec will be added soon.</div>:<div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+            {alreadySent(s.id)?<div style={{fontSize:12,color:"#4ade80"}}>✓ Spec request already sent! It will be added soon.</div>:<div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
               <input value={reqBoard[s.id]||""} onChange={e=>setReqBoard(p=>({...p,[s.id]:e.target.value}))}
                 placeholder="Enter your exam board (e.g. AQA, Edexcel, OCR...)" style={{...S.input,fontSize:12,flex:1,minWidth:200}}/>
-              <button onClick={()=>sendRequest(s)} style={{...S.btnGreen,fontSize:12,flexShrink:0}}>📨 Request spec</button>
+              <button onClick={()=>confirmRequest(s)} disabled={!reqBoard[s.id]?.trim()} style={{...S.btnGreen,fontSize:12,flexShrink:0,opacity:reqBoard[s.id]?.trim()?1:0.4}}>📨 Request spec</button>
             </div>}
           </div>
         </div>)}
@@ -774,6 +826,7 @@ function App(){
   const [grades,setGradesRaw]=useState({});
   const [tests,setTestsRaw]=useState([]);
   const [geminiKey,setGeminiKeyRaw]=useState("");
+  const [specRequests,setSpecRequestsRaw]=useState([]);
   const [expSubj,setExpSubj]=useState(null);
   const [expTopic,setExpTopic]=useState({});
   const [saving,setSaving]=useState(false);
@@ -790,7 +843,7 @@ function App(){
             const snap=await window.__firebase.loadDoc(fbUser.uid);
             if(snap){
               setTimetableRaw(snap.timetable||{});setSubtopicDataRaw(snap.spec||{});
-              setGradesRaw(snap.grades||{});setTestsRaw(snap.tests||[]);setGeminiKeyRaw(snap.geminiKey||"");
+              setGradesRaw(snap.grades||{});setTestsRaw(snap.tests||[]);setGeminiKeyRaw(snap.geminiKey||"");setSpecRequestsRaw(snap.specRequests||[]);
               setUser({uid:fbUser.uid,username:snap.username||fbUser.email.replace("@gcsetracker.app","")});
             }
           }catch(e){console.error(e);}
@@ -803,32 +856,33 @@ function App(){
     return()=>{if(typeof unsub==="function")unsub();};
   },[]);
 
-  const saveToFirebase=useCallback(async(uid,tt,spec,gr,ts,gk)=>{
+  const saveToFirebase=useCallback(async(uid,tt,spec,gr,ts,gk,sr)=>{
     if(!uid||!window.__firebase)return;
     setSaving(true);
-    await window.__firebase.saveData(uid,{timetable:tt,spec,grades:gr,tests:ts,geminiKey:gk});
+    await window.__firebase.saveData(uid,{timetable:tt,spec,grades:gr,tests:ts,geminiKey:gk,specRequests:sr});
     setSaving(false);
   },[]);
 
-  const debouncedSave=useCallback((uid,tt,spec,gr,ts,gk)=>{
+  const debouncedSave=useCallback((uid,tt,spec,gr,ts,gk,sr)=>{
     clearTimeout(saveTimer.current);
-    saveTimer.current=setTimeout(()=>saveToFirebase(uid,tt,spec,gr,ts,gk),1500);
+    saveTimer.current=setTimeout(()=>saveToFirebase(uid,tt,spec,gr,ts,gk,sr),1500);
   },[saveToFirebase]);
 
-  const setTimetable=v=>{const next=typeof v==="function"?v(timetable):v;setTimetableRaw(next);if(user)debouncedSave(user.uid,next,subtopicData,grades,tests,geminiKey);};
-  const setSubtopicData=v=>{const next=typeof v==="function"?v(subtopicData):v;setSubtopicDataRaw(next);if(user)debouncedSave(user.uid,timetable,next,grades,tests,geminiKey);};
-  const setGrades=v=>{const next=typeof v==="function"?v(grades):v;setGradesRaw(next);if(user)debouncedSave(user.uid,timetable,subtopicData,next,tests,geminiKey);};
-  const setTests=v=>{const next=typeof v==="function"?v(tests):v;setTestsRaw(next);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,next,geminiKey);};
-  const setGeminiKey=v=>{setGeminiKeyRaw(v);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,v);};
+  const setTimetable=v=>{const next=typeof v==="function"?v(timetable):v;setTimetableRaw(next);if(user)debouncedSave(user.uid,next,subtopicData,grades,tests,geminiKey,specRequests);};
+  const setSubtopicData=v=>{const next=typeof v==="function"?v(subtopicData):v;setSubtopicDataRaw(next);if(user)debouncedSave(user.uid,timetable,next,grades,tests,geminiKey,specRequests);};
+  const setGrades=v=>{const next=typeof v==="function"?v(grades):v;setGradesRaw(next);if(user)debouncedSave(user.uid,timetable,subtopicData,next,tests,geminiKey,specRequests);};
+  const setTests=v=>{const next=typeof v==="function"?v(tests):v;setTestsRaw(next);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,next,geminiKey,specRequests);};
+  const setGeminiKey=v=>{setGeminiKeyRaw(v);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,v,specRequests);};
+  const setSpecRequests=v=>{const next=typeof v==="function"?v(specRequests):v;setSpecRequestsRaw(next);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,geminiKey,next);};
 
   const handleLogin=(uid,username,data)=>{
     setTimetableRaw(data.timetable||{});setSubtopicDataRaw(data.spec||{});
-    setGradesRaw(data.grades||{});setTestsRaw(data.tests||[]);setGeminiKeyRaw(data.geminiKey||"");
+    setGradesRaw(data.grades||{});setTestsRaw(data.tests||[]);setGeminiKeyRaw(data.geminiKey||"");setSpecRequestsRaw(data.specRequests||[]);
     setUser({uid,username});
   };
   const handleLogout=async()=>{
     await window.__firebase.logout();
-    setUser(null);setTimetableRaw({});setSubtopicDataRaw({});setGradesRaw({});setTestsRaw([]);setGeminiKeyRaw("");
+    setUser(null);setTimetableRaw({});setSubtopicDataRaw({});setGradesRaw({});setTestsRaw([]);setGeminiKeyRaw("");setSpecRequestsRaw([]);
   };
 
   const getVal=(sId,tId,i)=>subtopicData[`${sId}__${tId}__${i}`]||{coverage:"Not started",rag:"Red",date:""};
@@ -857,7 +911,7 @@ function App(){
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <span style={{fontSize:11,color:saving?"#64748b":"#334155",fontFamily:"monospace",minWidth:60}}>{saving?"Saving...":"Saved ✓"}</span>
           {geminiKey&&<span style={{fontSize:11,color:"#4ade80",background:"rgba(74,222,128,0.1)",border:"1px solid rgba(74,222,128,0.2)",borderRadius:4,padding:"2px 7px"}}>🤖 AI on</span>}
-          <button onClick={()=>setShowSettings(true)} style={S.btn}>⚙️ Settings</button>
+          <button onClick={()=>setShowSettings(true)} style={S.btn}>🤖 AI Setup</button>
           <span style={{fontSize:12,color:"#475569",fontFamily:"monospace"}}>👤 {user.username}</span>
           <button onClick={handleLogout} style={{...S.btn,color:"#64748b"}}>Log out</button>
         </div>
@@ -871,7 +925,7 @@ function App(){
     <div style={S.body}>
       {tab==="timetable"&&<Timetable timetable={timetable} setTimetable={setTimetable} tests={tests} setTests={setTests} geminiKey={geminiKey} getProgress={getProgress} subtopicData={subtopicData}/>}
       {tab==="grades"&&<Grades grades={grades} setGrades={setGrades} getProgress={getProgress} assignedSubjectIds={assignedSubjectIds}/>}
-      {tab==="spec"&&<SpecTracker expSubj={expSubj} setExpSubj={setExpSubj} expTopic={expTopic} setExpTopic={setExpTopic} getVal={getVal} setVal={setVal} getProgress={getProgress} assignedSubjectIds={assignedSubjectIds} user={user}/>}
+      {tab==="spec"&&<SpecTracker expSubj={expSubj} setExpSubj={setExpSubj} expTopic={expTopic} setExpTopic={setExpTopic} getVal={getVal} setVal={setVal} getProgress={getProgress} assignedSubjectIds={assignedSubjectIds} user={user} specRequests={specRequests} setSpecRequests={setSpecRequests}/>}
       {tab==="ai"&&<AICoach geminiKey={geminiKey} timetable={timetable} subtopicData={subtopicData} grades={grades} tests={tests}/>}
     </div>
   </div>;
