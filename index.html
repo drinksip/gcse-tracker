@@ -170,7 +170,7 @@ const EXTRA_SUBJECTS = [
 const ALL_SUBJECTS = [...SUBJECTS, ...EXTRA_SUBJECTS];
 
 const DAYS=["Mon","Tue","Wed","Thu","Fri","Sat"];
-const SLOTS=["Daily habit / short task","Evening 1","Evening 2"];
+const SLOTS=["Daily habit / short task","Slot 1","Slot 2"];
 const COVERAGE_OPTIONS=["Not covered","Covered in school","Covered by myself","Both"];
 const RAG_OPTIONS=["None","Red","Amber","Green"];
 const RAG_COLORS={None:"#334155",Red:"#f87171",Amber:"#fbbf24",Green:"#4ade80"};
@@ -356,7 +356,7 @@ function Timetable({timetable,setTimetable,tests,setTests,groqKey,getProgress,su
   const [aiLoading,setAiLoading]=useState(false);
   const [aiResult,setAiResult]=useState("");
   const [applyPreview,setApplyPreview]=useState(null);
-  const [aiQ,setAiQ]=useState({hours:"2",priority:"",goal:""});
+  const [aiQ,setAiQ]=useState({hours:"2",priority:"",goal:"",useRag:false});
   const [newTest,setNewTest]=useState({subject:"",date:"",type:"Class test"});
   const [showAddTest,setShowAddTest]=useState(false);
 
@@ -388,7 +388,7 @@ function Timetable({timetable,setTimetable,tests,setTests,groqKey,getProgress,su
   const parseAITimetable=(text)=>{
     const result={};
     const dayAliases={mon:"Mon",tue:"Tue",wed:"Wed",thu:"Thu",fri:"Fri",sat:"Sat"};
-    const slotAliases={"daily habit":"Daily habit / short task","short task":"Daily habit / short task","evening 1":"Evening 1","evening 2":"Evening 2","slot 1":"Evening 1","slot 2":"Evening 2"};
+    const slotAliases={"daily habit":"Daily habit / short task","short task":"Daily habit / short task","slot 1":"Slot 1","slot 2":"Slot 2","evening 1":"Slot 1","evening 2":"Slot 2"};
     const lines=text.split("\n");
     let curDay=null;
     for(const line of lines){
@@ -408,24 +408,33 @@ function Timetable({timetable,setTimetable,tests,setTests,groqKey,getProgress,su
 
   const runAI=async()=>{
     if(!groqKey){setAiResult("No Groq API key set. Go to AI Setup to add one.");return;}
+    if(assignedSubjectIds.length===0){setAiResult("Please add subjects to your timetable first before optimizing.");return;}
     setAiLoading(true);setAiResult("");setApplyPreview(null);
-    const ragSummary=assignedSubjectIds.map(id=>{
-      const s=ALL_SUBJECTS.find(x=>x.id===id);
-      const subjectWithSpec=SUBJECTS.find(x=>x.id===id);
-      if(!subjectWithSpec)return(s?s.name:id)+": no spec data";
-      let total=0,green=0,amber=0,red=0;
-      subjectWithSpec.topics.forEach(t=>t.subtopics.forEach((_,i)=>{
-        total++;
-        const key=id+"__"+t.id+"__"+i;
-        const v=subtopicData[key]||{rag:"None"};
-        if(v.rag==="Green")green++;else if(v.rag==="Amber")amber++;else if(v.rag==="Red")red++;
-      }));
-      return(s?s.name:id)+": "+green+"/"+total+" green, "+amber+" amber, "+red+" red";
-    }).join("\n");
+    
+    const assignedSubjectNames=assignedSubjectIds.map(id=>ALL_SUBJECTS.find(x=>x.id===id)?.name).filter(Boolean).join(", ");
+    
+    let ragSummary="";
+    if(aiQ.useRag){
+      ragSummary=assignedSubjectIds.map(id=>{
+        const s=ALL_SUBJECTS.find(x=>x.id===id);
+        const subjectWithSpec=SUBJECTS.find(x=>x.id===id);
+        if(!subjectWithSpec)return(s?s.name:id)+": no spec data";
+        let total=0,green=0,amber=0,red=0;
+        subjectWithSpec.topics.forEach(t=>t.subtopics.forEach((_,i)=>{
+          total++;
+          const key=id+"__"+t.id+"__"+i;
+          const v=subtopicData[key]||{rag:"None"};
+          if(v.rag==="Green")green++;else if(v.rag==="Amber")amber++;else if(v.rag==="Red")red++;
+        }));
+        return(s?s.name:id)+": "+green+"/"+total+" green, "+amber+" amber, "+red+" red";
+      }).join("\n");
+    }
+    
     const testsList=upcomingTests.map(t=>t.subject+" - "+t.type+" in "+daysUntil(t.date)+" days").join("\n")||"No upcoming tests";
-    const prompt="A student needs an optimised weekly revision timetable.\n\nSpec coverage (RAG):\n"+ragSummary+"\n\nUpcoming tests:\n"+testsList+"\n\nInfo:\n- Study hours per day: "+aiQ.hours+"\n- Priority: "+(aiQ.priority||"none")+"\n- Goal: "+(aiQ.goal||"general revision")+"\n\nDays: Mon-Sat. Sessions per day: Daily habit / short task, Slot 1, Slot 2.\n\nIMPORTANT — format EXACTLY like this so it can be auto-applied:\nMon - Daily habit / short task: [Subject]\nMon - Slot 1: [Subject]\nMon - Slot 2: [Subject]\nTue - Daily habit / short task: [Subject]\n...and so on for all 6 days.\n\nAfter the timetable block, briefly explain your choices.";
+    const ragSection=aiQ.useRag?"\n\nSpec coverage (RAG):\n"+ragSummary:"";
+    const prompt="A student needs an optimised weekly revision timetable.\n\nStudent's subjects: "+assignedSubjectNames+ragSection+"\n\nUpcoming tests:\n"+testsList+"\n\nInfo:\n- Study hours per day: "+aiQ.hours+"\n- Priority: "+(aiQ.priority||"none")+"\n- Goal: "+(aiQ.goal||"general revision")+"\n\nDays: Mon-Sat. Sessions per day: Daily habit / short task, Slot 1, Slot 2.\n\n⚠️ CRITICAL: ONLY use these subjects in the timetable: "+assignedSubjectNames+"\n\nFormat EXACTLY like this so it can be auto-applied:\nMon - Daily habit / short task: [Subject]\nMon - Slot 1: [Subject]\nMon - Slot 2: [Subject]\nTue - Daily habit / short task: [Subject]\n...and so on for all 6 days.\n\nAfter the timetable block, briefly explain your choices.";
     try{
-      const result=await callAI(groqKey,prompt,"You are a GCSE revision assistant. Follow the exact format requested for the timetable. Give practical, accurate advice.");
+      const result=await callAI(groqKey,prompt,"You are a GCSE revision assistant. ONLY use the subjects provided. Follow the exact format requested for the timetable. Give practical, accurate advice. Never suggest subjects not in the student's list.");
       setAiResult(result);
       const parsed=parseAITimetable(result);
       if(parsed)setApplyPreview(parsed);
@@ -556,6 +565,10 @@ function Timetable({timetable,setTimetable,tests,setTests,groqKey,getProgress,su
             <div style={{fontSize:11,color:"var(--text3)",marginBottom:5,textTransform:"uppercase",letterSpacing:1}}>Goal (optional)</div>
             <input value={aiQ.goal} onChange={e=>setAiQ(p=>({...p,goal:e.target.value}))} placeholder="e.g. Prepare for mocks" style={{...S.input,fontSize:12}}/>
           </div>
+          <div style={{display:"flex",alignItems:"center",gap:8,padding:8,background:"var(--bg3)",borderRadius:6}}>
+            <input type="checkbox" checked={aiQ.useRag} onChange={e=>setAiQ(p=>({...p,useRag:e.target.checked}))} style={{cursor:"pointer",width:16,height:16}}/>
+            <label style={{fontSize:12,color:"var(--text2)",cursor:"pointer",flex:1}}>Include RAG data in optimization (if you've updated it)</label>
+          </div>
         </div>
         <button onClick={runAI} disabled={aiLoading} style={{...S.btnBlue,width:"100%",opacity:aiLoading?0.6:1,marginBottom:12}}>{aiLoading?"Thinking...":"✨ Generate with AI"}</button>
         {aiResult&&<div style={{background:"var(--bg)",borderRadius:8,padding:12,border:"1px solid var(--border)",fontSize:12,color:"var(--text2)",lineHeight:1.6,whiteSpace:"pre-wrap",marginBottom:12,maxHeight:300,overflowY:"auto"}}>{aiResult}</div>}
@@ -568,9 +581,13 @@ function Timetable({timetable,setTimetable,tests,setTests,groqKey,getProgress,su
 // ─── AI COACH ──────────────────────────────────────────────────────────────────
 function genId(){return"c"+Date.now()+"_"+Math.random().toString(36).substr(2,9);}
 function AICoach({groqKey,subtopicData,tests,chats,setChats}){
+  const [aiTab,setAiTab]=useState("chat");
   const [activeChatId,setActiveChatId]=useState(null);
   const [input,setInput]=useState("");
   const [loading,setLoading]=useState(false);
+  const [selectedTopics,setSelectedTopics]=useState([]);
+  const [generatedQuestion,setGeneratedQuestion]=useState(null);
+  const [showAnswer,setShowAnswer]=useState(false);
   const endRef=useRef(null);
   const activeChat=chats&&chats.find(c=>c.id===activeChatId);
   const messages=activeChat?.messages||[];
@@ -610,7 +627,6 @@ function AICoach({groqKey,subtopicData,tests,chats,setChats}){
   const send=async()=>{
     if(!input.trim())return;
     if(!activeChatId){
-      // Create a chat and immediately send into it
       const id=genId();
       const userMsg=input.trim();
       setInput("");
@@ -659,65 +675,127 @@ function AICoach({groqKey,subtopicData,tests,chats,setChats}){
     setLoading(false);
   };
 
+  const generateQuestion=async()=>{
+    if(selectedTopics.length===0){setGeneratedQuestion({question:"Please select at least one topic first.",answer:""});return;}
+    if(!groqKey){setGeneratedQuestion({question:"No Groq API key set. Go to AI Setup to add one.",answer:""});return;}
+    setLoading(true);
+    const topicList=selectedTopics.join(", ");
+    const prompt=`Generate a single GCSE-style exam question on these topics: ${topicList}\n\nProvide ONLY:\n1. The question\n2. Mark allocation (e.g., [6 marks])\n3. A detailed model answer\n\nFormat:\nQUESTION: [the question]\nMARKS: [X marks]\nANSWER: [detailed answer with key points]`;
+    try{
+      const reply=await callAI(groqKey,prompt,"You are a GCSE exam board. Generate authentic, challenging questions with detailed mark schemes.");
+      const parts=reply.split(/(?:MARKS:|ANSWER:)/);
+      setGeneratedQuestion({question:reply,answer:reply});
+      setShowAnswer(false);
+    }catch(e){
+      setGeneratedQuestion({question:"Failed to generate question. Check your API key.",answer:""});
+    }
+    setLoading(false);
+  };
+
+  const getAvailableTopics=()=>{
+    const topics=[];
+    SUBJECTS.forEach(s=>{
+      s.topics?.forEach(t=>{
+        topics.push({subject:s.name,topic:t.name,key:`${s.id}__${t.id}`});
+      });
+    });
+    return topics;
+  };
+
   const sidebarStyle={width:200,borderRight:"1px solid #1e293b",display:"flex",flexDirection:"column",background:"var(--bg)",flexShrink:0};
 
   return <div>
     <div style={S.sectionHeader}>🤖 AI Study Coach</div>
-    <p style={{color:"var(--text3)",fontSize:12,marginBottom:16,marginTop:4}}>
-      Ask me anything about your revision. Chats are saved automatically.
-      {!groqKey&&<span style={{color:"var(--red)"}}> (Add a Groq key in AI Setup to use this)</span>}
-    </p>
-    <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:10,display:"flex",height:500,overflow:"hidden"}}>
-      {/* Chat sidebar */}
-      <div style={sidebarStyle}>
-        <div style={{padding:"10px 14px",fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1,borderBottom:"1px solid #1e293b",display:"flex",justifyContent:"space-between",alignItems:"center",fontFamily:"var(--mono)"}}>
-          <span>Chats</span>
-          <button onClick={createChat} style={{...S.btn,padding:"2px 8px",fontSize:11}}>＋</button>
-        </div>
-        <div style={{flex:1,overflowY:"auto"}}>
-          {(!chats||chats.length===0)&&<div style={{padding:"12px 14px",fontSize:11,color:"var(--text3)"}}>No chats yet</div>}
-          {(chats||[]).map(c=><div key={c.id} onClick={()=>setActiveChatId(c.id)}
-            style={{padding:"10px 14px",cursor:"pointer",borderBottom:"1px solid #111827",background:activeChatId===c.id?"rgba(79,130,255,0.1)":"transparent",borderLeft:activeChatId===c.id?"2px solid #60a5fa":"2px solid transparent",transition:"background 0.12s"}}>
-            <div style={{fontSize:12,fontWeight:500,color:"var(--text2)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{c.name}</div>
-            <div style={{fontSize:10,color:"var(--text3)",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{c.messages&&c.messages.length>0&&c.messages[c.messages.length-1]?.text?c.messages[c.messages.length-1].text.slice(0,40):""}</div>
-          </div>)}
-        </div>
-        {activeChatId&&<button onClick={()=>deleteChat(activeChatId)} style={{...S.btn,margin:8,fontSize:11,color:"var(--red)",borderColor:"rgba(248,113,113,0.2)"}}>🗑 Delete chat</button>}
-      </div>
-      {/* Main chat area */}
-      <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
-        {!activeChatId
-          ?<div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
-            <div style={{textAlign:"center",marginBottom:24}}>
-              <div style={{fontSize:48,marginBottom:12}}>🤖</div>
-              <div style={{color:"var(--text3)",fontSize:14,marginBottom:8}}>No chat selected</div>
-              <div style={{color:"var(--text3)",fontSize:12}}>Start typing to create a new chat</div>
-            </div>
-            <div style={{width:"100%",borderTop:"1px solid #1e293b",padding:12,display:"flex",gap:8,background:"var(--bg2)",marginTop:"auto"}}>
-              <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&!loading&&send()}
-                placeholder="Ask anything about your revision..." style={{...S.input,fontSize:12,flex:1}}/>
-              <button onClick={send} disabled={loading||!input.trim()} style={{...S.btnBlue,padding:"8px 16px",opacity:(loading||!input.trim())?0.5:1}}>Send</button>
-            </div>
-          </div>
-          :<div style={{display:"flex",flexDirection:"column",flex:1,minHeight:0}}>
-            <div style={{flex:1,overflowY:"auto",padding:16,display:"flex",flexDirection:"column",gap:10}}>
-              {messages.map((m,i)=><div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
-                <div style={{maxWidth:"80%",background:m.role==="user"?"#1d4ed8":"#111827",borderRadius:10,padding:"10px 14px",fontSize:13,color:"var(--text)",lineHeight:1.6,whiteSpace:"pre-wrap",border:m.role==="user"?"none":"1px solid #1e293b"}}>
-                  {m.text}
-                </div>
-              </div>)}
-              {loading&&<div style={{display:"flex"}}><div style={{background:"var(--bg3)",borderRadius:10,padding:"10px 14px",fontSize:13,color:"var(--text3)",border:"1px solid var(--border)"}}>Thinking...</div></div>}
-              <div ref={endRef}/>
-            </div>
-            <div style={{borderTop:"1px solid #1e293b",padding:12,display:"flex",gap:8,background:"var(--bg2)",flexShrink:0}}>
-              <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&!loading&&send()}
-                placeholder="Ask anything about your revision..." style={{...S.input,fontSize:12,flex:1}}/>
-              <button onClick={send} disabled={loading||!input.trim()} style={{...S.btnBlue,padding:"8px 16px",opacity:(loading||!input.trim())?0.5:1}}>Send</button>
-            </div>
-          </div>
-        }
-      </div>
+    <div style={{display:"flex",gap:8,marginBottom:16}}>
+      <button onClick={()=>setAiTab("chat")} style={{...S.btn,...(aiTab==="chat"?{background:"var(--accent)",color:"white"}:{})}}>{aiTab==="chat"?"💬":""}Chat</button>
+      <button onClick={()=>setAiTab("questions")} style={{...S.btn,...(aiTab==="questions"?{background:"var(--accent)",color:"white"}:{})}}>{aiTab==="questions"?"❓":""}Practice Questions</button>
     </div>
+
+    {aiTab==="chat"&&<div>
+      <p style={{color:"var(--text3)",fontSize:12,marginBottom:16}}>
+        Ask me anything about your revision. Chats are saved automatically.
+        {!groqKey&&<span style={{color:"var(--red)"}}> (Add a Groq key in AI Setup to use this)</span>}
+      </p>
+      <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:10,display:"flex",height:500,overflow:"hidden"}}>
+        <div style={sidebarStyle}>
+          <div style={{padding:"10px 14px",fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1,borderBottom:"1px solid #1e293b",display:"flex",justifyContent:"space-between",alignItems:"center",fontFamily:"var(--mono)"}}>
+            <span>Chats</span>
+            <button onClick={createChat} style={{...S.btn,padding:"2px 8px",fontSize:11}}>＋</button>
+          </div>
+          <div style={{flex:1,overflowY:"auto"}}>
+            {(!chats||chats.length===0)&&<div style={{padding:"12px 14px",fontSize:11,color:"var(--text3)"}}>No chats yet</div>}
+            {(chats||[]).map(c=><div key={c.id} onClick={()=>setActiveChatId(c.id)}
+              style={{padding:"10px 14px",cursor:"pointer",borderBottom:"1px solid #111827",background:activeChatId===c.id?"rgba(79,130,255,0.1)":"transparent",borderLeft:activeChatId===c.id?"2px solid #60a5fa":"2px solid transparent",transition:"background 0.12s"}}>
+              <div style={{fontSize:12,fontWeight:500,color:"var(--text2)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{c.name}</div>
+              <div style={{fontSize:10,color:"var(--text3)",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{c.messages&&c.messages.length>0&&c.messages[c.messages.length-1]?.text?c.messages[c.messages.length-1].text.slice(0,40):""}</div>
+            </div>)}
+          </div>
+          {activeChatId&&<button onClick={()=>deleteChat(activeChatId)} style={{...S.btn,margin:8,fontSize:11,color:"var(--red)",borderColor:"rgba(248,113,113,0.2)"}}>🗑 Delete chat</button>}
+        </div>
+        <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
+          {!activeChatId
+            ?<div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+              <div style={{textAlign:"center",marginBottom:24}}>
+                <div style={{fontSize:48,marginBottom:12}}>🤖</div>
+                <div style={{color:"var(--text3)",fontSize:14,marginBottom:8}}>No chat selected</div>
+                <div style={{color:"var(--text3)",fontSize:12}}>Start typing to create a new chat</div>
+              </div>
+              <div style={{width:"100%",borderTop:"1px solid #1e293b",padding:12,display:"flex",gap:8,background:"var(--bg2)",marginTop:"auto"}}>
+                <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&!loading&&send()}
+                  placeholder="Ask anything about your revision..." style={{...S.input,fontSize:12,flex:1}}/>
+                <button onClick={send} disabled={loading||!input.trim()} style={{...S.btnBlue,padding:"8px 16px",opacity:(loading||!input.trim())?0.5:1}}>Send</button>
+              </div>
+            </div>
+            :<div style={{display:"flex",flexDirection:"column",flex:1,minHeight:0}}>
+              <div style={{flex:1,overflowY:"auto",padding:16,display:"flex",flexDirection:"column",gap:10}}>
+                {messages.map((m,i)=><div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
+                  <div style={{maxWidth:"80%",background:m.role==="user"?"#1d4ed8":"#111827",borderRadius:10,padding:"10px 14px",fontSize:13,color:"var(--text)",lineHeight:1.6,whiteSpace:"pre-wrap",border:m.role==="user"?"none":"1px solid #1e293b"}}>
+                    {m.text}
+                  </div>
+                </div>)}
+                {loading&&<div style={{display:"flex"}}><div style={{background:"var(--bg3)",borderRadius:10,padding:"10px 14px",fontSize:13,color:"var(--text3)",border:"1px solid var(--border)"}}>Thinking...</div></div>}
+                <div ref={endRef}/>
+              </div>
+              <div style={{borderTop:"1px solid #1e293b",padding:12,display:"flex",gap:8,background:"var(--bg2)",flexShrink:0}}>
+                <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&!loading&&send()}
+                  placeholder="Ask anything about your revision..." style={{...S.input,fontSize:12,flex:1}}/>
+                <button onClick={send} disabled={loading||!input.trim()} style={{...S.btnBlue,padding:"8px 16px",opacity:(loading||!input.trim())?0.5:1}}>Send</button>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>}
+
+    {aiTab==="questions"&&<div>
+      <p style={{color:"var(--text3)",fontSize:12,marginBottom:16}}>
+        Select topics you want to practice and generate GCSE-style exam questions.
+        {!groqKey&&<span style={{color:"var(--red)"}}> (Add a Groq key in AI Setup to use this)</span>}
+      </p>
+      <div style={{...S.card,marginBottom:20}}>
+        <div style={S.cardTitle}>Select Topics</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))",gap:8,marginTop:12}}>
+          {getAvailableTopics().map(t=>(
+            <label key={t.key} style={{display:"flex",alignItems:"center",gap:8,padding:8,background:"var(--bg3)",borderRadius:6,cursor:"pointer"}}>
+              <input type="checkbox" checked={selectedTopics.includes(t.topic)} onChange={e=>e.target.checked?setSelectedTopics(p=>[...p,t.topic]):setSelectedTopics(p=>p.filter(x=>x!==t.topic))} style={{cursor:"pointer",width:16,height:16}}/>
+              <span style={{fontSize:12,color:"var(--text2)"}}>{t.subject}: {t.topic}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+      <button onClick={generateQuestion} disabled={loading||selectedTopics.length===0} style={{...S.btnBlue,width:"100%",marginBottom:20,opacity:loading||selectedTopics.length===0?0.5:1}}>{loading?"Generating...":"✨ Generate Question"}</button>
+      {generatedQuestion&&<div style={{...S.card}}>
+        <div style={S.cardTitle}>Practice Question</div>
+        <div style={{background:"var(--bg)",borderRadius:8,padding:16,border:"1px solid var(--border)",marginTop:12,marginBottom:12}}>
+          <div style={{color:"var(--text)",fontSize:14,lineHeight:1.8,whiteSpace:"pre-wrap"}}>{generatedQuestion.question}</div>
+        </div>
+        <button onClick={()=>setShowAnswer(!showAnswer)} style={{...S.btnGreen,width:"100%",marginBottom:12}}>{showAnswer?"🙈 Hide answer":"👁️ Show answer"}</button>
+        {showAnswer&&<div style={{background:"rgba(52,211,153,0.1)",border:"1px solid rgba(52,211,153,0.3)",borderRadius:8,padding:12}}>
+          <div style={{color:"var(--green)",fontSize:11,textTransform:"uppercase",marginBottom:8,letterSpacing:1}}>Model Answer</div>
+          <div style={{color:"var(--text)",fontSize:13,lineHeight:1.8,whiteSpace:"pre-wrap"}}>{generatedQuestion.answer}</div>
+        </div>}
+      </div>}
+    </div>}
   </div>;
 }
 
