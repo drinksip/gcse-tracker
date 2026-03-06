@@ -698,6 +698,8 @@ function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getP
 
   const alreadySent=(sId)=>(specRequests||[]).includes(sId);
 
+  const [reqLoading,setReqLoading]=useState(false);
+
   const confirmRequest=(s)=>{
     if(!reqBoard[s.id]?.trim())return;
     setConfirming(s);
@@ -705,9 +707,12 @@ function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getP
 
   const sendRequest=async()=>{
     const s=confirming;if(!s)return;
-    await window.__firebase.sendSpecRequest(user.username,s.id,s.name,reqBoard[s.id]);
-    const updated=[...(specRequests||[]),s.id];
-    setSpecRequests(updated);
+    setReqLoading(true);
+    try{
+      await window.__firebase.sendSpecRequest(user.username,s.id,s.name,reqBoard[s.id]);
+      setSpecRequests([...(specRequests||[]),s.id]);
+    }catch(e){console.error(e);}
+    setReqLoading(false);
     setConfirming(null);
   };
 
@@ -722,7 +727,7 @@ function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getP
         </div>
         <div style={{fontSize:11,color:"#475569",marginBottom:16,lineHeight:1.5}}>This sends a request to the site owner. You can only send one request per subject. The spec will be added to the tracker once it's ready.</div>
         <div style={{display:"flex",gap:8}}>
-          <button onClick={sendRequest} style={{...S.btnGreen,flex:1,textAlign:"center"}}>✓ Yes, send request</button>
+          <button onClick={sendRequest} disabled={reqLoading} style={{...S.btnGreen,flex:1,textAlign:"center",opacity:reqLoading?0.6:1}}>{reqLoading?"Sending...":"✓ Yes, send request"}</button>
           <button onClick={()=>setConfirming(null)} style={{...S.btn,flex:1,textAlign:"center"}}>Cancel</button>
         </div>
       </div>
