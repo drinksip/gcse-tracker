@@ -882,11 +882,34 @@ function Grades({grades,setGrades,getProgress,assignedSubjectIds}){
 }
 
 // ─── SPEC TRACKER ─────────────────────────────────────────────────────────────
-function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getProgress,assignedSubjectIds,user,specRequests,setSpecRequests}){
+function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getProgress,assignedSubjectIds,user,specRequests,setSpecRequests,aiConfig}){
   const toggleTopic=id=>setExpTopic(p=>({...p,[id]:!p[id]}));
   const [reqBoard,setReqBoard]=useState({});
+  const gizmoSearch=(q)=>window.open("https://gizmo.ai/community?q="+encodeURIComponent(q),"_blank");
   const [confirming,setConfirming]=useState(null);
   const [reqLoading,setReqLoading]=useState(false);
+  const [gizmoModal,setGizmoModal]=useState(null);
+  const [gizmoLoading,setGizmoLoading]=useState(false);
+  const [gizmoText,setGizmoText]=useState("");
+  const [gizmoCopied,setGizmoCopied]=useState(false);
+
+  const handleGizmoNotes=async(subj,topic,subtopic,rag)=>{
+    const activeKey=aiConfig?.key;
+    if(!activeKey){setGizmoModal({subj,topic,subtopic,rag});setGizmoText("No AI key set — go to the menu and open AI Setup.");return;}
+    setGizmoModal({subj,topic,subtopic,rag});
+    setGizmoLoading(true);setGizmoText("");
+    const prompt="Generate concise GCSE revision notes for: "+subj.name+" ("+subj.board+") — "+topic.name+" — "+subtopic+". This is rated "+rag+" so needs work. Format as bullet points the student can paste into Gizmo to auto-generate flashcards. Keep it under 200 words, factual, exam-focused. Start each bullet with a dash.";
+    try{
+      const reply=await callAI(aiConfig,prompt,"You are a GCSE revision assistant. Generate concise, accurate bullet-point notes for flashcard creation. Be factual and exam-focused. Use UK English.");
+      setGizmoText(reply);
+    }catch(e){setGizmoText("Failed to generate notes. Check your AI key in the menu.");}
+    setGizmoLoading(false);
+  };
+
+  const copyGizmo=()=>{
+    if(!gizmoText)return;
+    navigator.clipboard.writeText(gizmoText).then(()=>{setGizmoCopied(true);setTimeout(()=>setGizmoCopied(false),2000);});
+  };
 
   const visibleSubjects=ALL_SUBJECTS.filter(s=>assignedSubjectIds.includes(s.id));
   const subjectsWithSpec=visibleSubjects.filter(s=>SUBJECTS.find(x=>x.id===s.id));
@@ -905,6 +928,24 @@ function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getP
   };
 
   return <div>
+    {gizmoModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.78)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:16,padding:28,width:"100%",maxWidth:540,maxHeight:"85vh",display:"flex",flexDirection:"column"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+          <div style={{fontSize:14,fontWeight:700,color:"var(--text)"}}>✦ AI Notes for Gizmo</div>
+          <button onClick={()=>{setGizmoModal(null);setGizmoText("");}} style={{...S.btn,padding:"4px 10px"}}>✕</button>
+        </div>
+        <div style={{fontSize:11,color:"var(--text3)",marginBottom:14}}>{gizmoModal.subj?.name} · {gizmoModal.topic?.name} · <span style={{color:gizmoModal.rag==="Red"?"#f87171":"#fbbf24"}}>{gizmoModal.rag}</span></div>
+        <div style={{flex:1,overflowY:"auto",background:"var(--bg4)",borderRadius:8,padding:14,marginBottom:14,minHeight:120,fontFamily:"var(--mono)",fontSize:12,color:"var(--text2)",lineHeight:1.7,whiteSpace:"pre-wrap"}}>
+          {gizmoLoading?<span style={{color:"var(--text3)"}}>Generating notes...</span>:gizmoText||<span style={{color:"var(--text3)"}}>Notes will appear here.</span>}
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={copyGizmo} disabled={!gizmoText||gizmoLoading} style={{...S.btnBlue,fontSize:12,opacity:(!gizmoText||gizmoLoading)?0.4:1}}>{gizmoCopied?"✓ Copied!":"📋 Copy notes"}</button>
+          <a href={"https://gizmo.ai/community?q="+encodeURIComponent((gizmoModal.subj?.board||"")+" "+gizmoModal.subj?.name+" "+(gizmoModal.subtopic||""))} target="_blank" rel="noopener noreferrer" style={{...S.btn,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4,fontSize:12,color:"#a78bfa",borderColor:"rgba(124,58,237,0.3)"}}>🃏 Search Gizmo</a>
+          {gizmoText&&<button onClick={()=>handleGizmoNotes(gizmoModal.subj,gizmoModal.topic,gizmoModal.subtopic,gizmoModal.rag)} style={{...S.btn,fontSize:12}}>↺ Regenerate</button>}
+        </div>
+        {gizmoText&&!gizmoLoading&&<div style={{fontSize:10,color:"var(--text3)",marginTop:10,lineHeight:1.5}}>Copy these notes, then on Gizmo click "Create deck" → paste into the text box → Gizmo will auto-generate flashcards for you.</div>}
+      </div>
+    </div>}
     {confirming&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
       <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:14,padding:28,maxWidth:420,width:"100%"}}>
         <div style={{fontSize:15,fontWeight:700,color:"var(--text)",marginBottom:12}}>📨 Confirm spec request</div>
@@ -935,7 +976,8 @@ function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getP
                 <div style={{color:"var(--text3)",fontSize:11}}>{s.board} · {prog.total} subtopics</div>
               </div>
             </div>
-            <div style={{display:"flex",alignItems:"center",gap:12}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <button onClick={e=>{e.stopPropagation();gizmoSearch(s.name+" "+(s.board||"")+" GCSE flashcards");}} style={{...S.btn,fontSize:10,padding:"3px 8px",color:"#34d399",borderColor:"rgba(52,211,153,0.25)"}}>🔍 Gizmo</button>
               <div style={{textAlign:"right"}}>
                 <div style={{color:actualColor,fontWeight:700,fontSize:15}}>{gPct}%</div>
                 <div style={{color:"var(--text3)",fontSize:11}}>green</div>
@@ -977,6 +1019,12 @@ function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getP
                         }}/>)}
                       </div>
                       <input type="date" value={v.date} onChange={e=>setVal(s.id,t.id,i,"date",e.target.value)} style={{...S.specDate,flex:2}}/>
+                      <div style={{display:"flex",gap:3,flexShrink:0}}>
+                        <a href={"https://gizmo.ai/community?q="+encodeURIComponent(s.board+" "+s.name+" "+st)} target="_blank" rel="noopener noreferrer"
+                          title="Find flashcards on Gizmo"
+                          style={{display:"flex",alignItems:"center",justifyContent:"center",width:22,height:22,background:"rgba(124,58,237,0.12)",border:"1px solid rgba(124,58,237,0.25)",borderRadius:4,fontSize:10,textDecoration:"none",color:"#a78bfa"}}>🃏</a>
+                        {(v.rag==="Red"||v.rag==="Amber")&&<button title="Generate AI notes for Gizmo" onClick={()=>handleGizmoNotes(s,t,st,v.rag)} style={{display:"flex",alignItems:"center",justifyContent:"center",width:22,height:22,background:"rgba(79,142,255,0.1)",border:"1px solid rgba(79,142,255,0.2)",borderRadius:4,fontSize:10,cursor:"pointer",color:"var(--accent)",padding:0}}>✦</button>}
+                      </div>
                     </div>;
                   })}
                 </div>}
@@ -1013,23 +1061,27 @@ function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getP
 }
 
 // ─── POMODORO TIMER ──────────────────────────────────────────────────────────
-function PomodoroTimer({onClose,assignedSubjectIds,revisionLog,setRevisionLog}){
-  const MODES=[{id:"focus",label:"Focus",mins:25,color:"#4f8eff"},{id:"short",label:"Short Break",mins:5,color:"#34d399"},{id:"long",label:"Long Break",mins:15,color:"#a78bfa"}];
-  const [modeIdx,setModeIdx]=useState(0);
-  const [secsLeft,setSecsLeft]=useState(MODES[0].mins*60);
+function PomodoroTimer({onClose,assignedSubjectIds,setRevisionLog}){
+  const DURATIONS=[{label:"15 min",mins:15},{label:"25 min",mins:25},{label:"30 min",mins:30},{label:"45 min",mins:45},{label:"60 min",mins:60}];
+  const [durIdx,setDurIdx]=useState(1);
+  const dur=DURATIONS[durIdx];
+  const [secsLeft,setSecsLeft]=useState(dur.mins*60);
   const [running,setRunning]=useState(false);
   const [session,setSession]=useState(0);
   const [subject,setSubject]=useState(assignedSubjectIds[0]||"");
   const [note,setNote]=useState("");
   const [justFinished,setJustFinished]=useState(false);
   const intervalRef=useRef(null);
-  const mode=MODES[modeIdx];
-  const total=mode.mins*60;
+  const RING_COLOR="#4f8eff";
+  const total=dur.mins*60;
   const pct=Math.max(0,(secsLeft/total)*100);
-  const mins=String(Math.floor(secsLeft/60)).padStart(2,"0");
-  const secs=String(secsLeft%60).padStart(2,"0");
+  const minsDisp=String(Math.floor(secsLeft/60)).padStart(2,"0");
+  const secsDisp=String(secsLeft%60).padStart(2,"0");
   const circumference=2*Math.PI*52;
   const dashOffset=circumference*(1-pct/100);
+
+  const switchDur=(idx)=>{if(running)return;setDurIdx(idx);setSecsLeft(DURATIONS[idx].mins*60);setJustFinished(false);};
+  const reset=()=>{setSecsLeft(dur.mins*60);setRunning(false);setJustFinished(false);};
 
   useEffect(()=>{
     if(running){
@@ -1038,11 +1090,8 @@ function PomodoroTimer({onClose,assignedSubjectIds,revisionLog,setRevisionLog}){
           if(p<=1){
             clearInterval(intervalRef.current);
             setRunning(false);
-            if(modeIdx===0){
-              setSession(s=>s+1);
-              setJustFinished(true);
-              try{new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhS1Ckw7+vhF9Ocrewm2JKQY+vq4pYQTiCpaaIWUc3fqSjg1VEN3GUo39QRTVrkpd4Tk04apKTeE5LNWiRkndOS").play();}catch(e){}
-            }
+            setSession(s=>s+1);
+            setJustFinished(true);
             return 0;
           }
           return p-1;
@@ -1050,76 +1099,76 @@ function PomodoroTimer({onClose,assignedSubjectIds,revisionLog,setRevisionLog}){
       },1000);
     }
     return()=>clearInterval(intervalRef.current);
-  },[running,modeIdx]);
-
-  const switchMode=(idx)=>{setModeIdx(idx);setSecsLeft(MODES[idx].mins*60);setRunning(false);setJustFinished(false);};
-  const reset=()=>{setSecsLeft(mode.mins*60);setRunning(false);setJustFinished(false);};
+  },[running]);
 
   const logSession=()=>{
     const subj=ALL_SUBJECTS.find(s=>s.id===subject);
-    const entry={id:Date.now().toString(),date:new Date().toISOString(),subject:subject,subjectName:subj?.name||subject,emoji:subj?.emoji||"📚",duration:mode.mins,note:note.trim(),type:"Pomodoro"};
+    const entry={id:Date.now().toString(),date:new Date().toISOString(),subject:subject,subjectName:subj?.name||subject,emoji:subj?.emoji||"📚",duration:dur.mins,note:note.trim(),type:"Pomodoro"};
     setRevisionLog(p=>[entry,...(p||[])]);
-    setNote("");setJustFinished(false);
+    setNote("");setJustFinished(false);reset();
   };
 
-  const ringColor=mode.color;
-  return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+  return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.82)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
     <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:20,padding:"28px 32px",width:"100%",maxWidth:400,boxShadow:"0 24px 80px rgba(0,0,0,0.6)"}}>
       {/* Header */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <div style={{fontSize:15,fontWeight:700,color:"var(--text)"}}>🍅 Pomodoro Timer</div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
-          {session>0&&<span style={{fontSize:11,color:"var(--green)",background:"rgba(52,211,153,0.1)",border:"1px solid rgba(52,211,153,0.2)",borderRadius:20,padding:"2px 10px",fontFamily:"var(--mono)"}}>{session} 🍅</span>}
+          {session>0&&<span style={{fontSize:11,color:"var(--green)",background:"rgba(52,211,153,0.1)",border:"1px solid rgba(52,211,153,0.2)",borderRadius:20,padding:"2px 10px",fontFamily:"var(--mono)"}}>{session} 🍅 today</span>}
           <button onClick={onClose} style={{...S.btn,padding:"4px 10px",fontSize:12}}>✕</button>
         </div>
       </div>
 
-      {/* Mode tabs */}
-      <div style={{display:"flex",gap:4,marginBottom:24,background:"var(--bg4)",borderRadius:10,padding:4}}>
-        {MODES.map((m,i)=><button key={m.id} onClick={()=>switchMode(i)} style={{flex:1,padding:"6px 0",borderRadius:7,border:"none",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"var(--font)",background:modeIdx===i?m.color+"22":"transparent",color:modeIdx===i?m.color:"var(--text3)",transition:"all 0.15s"}}>{m.label}</button>)}
+      {/* Duration selector */}
+      <div style={{display:"flex",gap:4,marginBottom:22,background:"var(--bg4)",borderRadius:10,padding:4}}>
+        {DURATIONS.map((d,i)=><button key={d.label} onClick={()=>switchDur(i)} style={{flex:1,padding:"5px 0",borderRadius:7,border:"none",fontSize:11,fontWeight:600,cursor:running?"not-allowed":"pointer",fontFamily:"var(--mono)",background:durIdx===i?RING_COLOR+"30":"transparent",color:durIdx===i?RING_COLOR:"var(--text3)",transition:"all 0.15s",opacity:running&&durIdx!==i?0.4:1}}>{d.label}</button>)}
       </div>
 
       {/* Ring timer */}
-      <div style={{display:"flex",justifyContent:"center",marginBottom:24}}>
-        <div style={{position:"relative",width:140,height:140}}>
-          <svg width="140" height="140" style={{transform:"rotate(-90deg)"}}>
-            <circle cx="70" cy="70" r="52" fill="none" stroke="var(--border)" strokeWidth="8"/>
-            <circle cx="70" cy="70" r="52" fill="none" stroke={ringColor} strokeWidth="8"
-              strokeDasharray={circumference} strokeDashoffset={dashOffset}
+      <div style={{display:"flex",justifyContent:"center",marginBottom:22}}>
+        <div style={{position:"relative",width:150,height:150}}>
+          <svg width="150" height="150" style={{transform:"rotate(-90deg)"}}>
+            <circle cx="75" cy="75" r="56" fill="none" stroke="var(--border)" strokeWidth="8"/>
+            <circle cx="75" cy="75" r="56" fill="none" stroke={justFinished?"#34d399":RING_COLOR} strokeWidth="8"
+              strokeDasharray={circumference*56/52} strokeDashoffset={(circumference*56/52)*(1-pct/100)}
               style={{transition:"stroke-dashoffset 1s linear",strokeLinecap:"round"}}/>
           </svg>
           <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
-            <div style={{fontSize:32,fontWeight:700,color:"var(--text)",fontFamily:"var(--mono)",letterSpacing:-1}}>{mins}:{secs}</div>
-            <div style={{fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1,marginTop:2}}>{mode.label}</div>
+            {justFinished
+              ?<div style={{fontSize:36}}>🎉</div>
+              :<><div style={{fontSize:34,fontWeight:700,color:"var(--text)",fontFamily:"var(--mono)",letterSpacing:-2}}>{minsDisp}:{secsDisp}</div>
+              <div style={{fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1,marginTop:2}}>{running?"focusing...":"ready"}</div></>
+            }
           </div>
         </div>
       </div>
 
       {/* Controls */}
-      <div style={{display:"flex",gap:8,marginBottom:20,justifyContent:"center"}}>
-        <button onClick={()=>setRunning(p=>!p)} style={{background:running?"rgba(248,113,113,0.15)":"linear-gradient(135deg,"+ringColor+"cc,"+ringColor+")",border:`1px solid ${running?"rgba(248,113,113,0.3)":ringColor+"44"}`,borderRadius:10,color:running?"#f87171":"white",padding:"10px 28px",fontSize:14,fontWeight:700,fontFamily:"var(--font)",cursor:"pointer",transition:"all 0.15s",minWidth:100}}>
+      {!justFinished&&<div style={{display:"flex",gap:8,marginBottom:18,justifyContent:"center"}}>
+        <button onClick={()=>setRunning(p=>!p)} style={{background:running?"rgba(248,113,113,0.15)":"linear-gradient(135deg,#1a4fd8,#4f8eff)",border:"1px solid "+(running?"rgba(248,113,113,0.3)":"rgba(79,142,255,0.4)"),borderRadius:10,color:running?"#f87171":"white",padding:"11px 32px",fontSize:14,fontWeight:700,fontFamily:"var(--font)",cursor:"pointer",transition:"all 0.15s",minWidth:110}}>
           {running?"⏸ Pause":"▶ Start"}
         </button>
-        <button onClick={reset} style={{...S.btn,padding:"10px 16px"}}>↺ Reset</button>
-      </div>
+        <button onClick={reset} style={{...S.btn,padding:"11px 18px",fontSize:13}}>↺</button>
+      </div>}
 
-      {/* Log session area - shown after a focus session finishes */}
-      {justFinished&&<div style={{background:"rgba(52,211,153,0.08)",border:"1px solid rgba(52,211,153,0.2)",borderRadius:10,padding:14,marginBottom:12}}>
-        <div style={{fontSize:12,color:"var(--green)",fontWeight:600,marginBottom:10}}>🎉 Focus session complete! Log it?</div>
-        <div style={{display:"flex",gap:8,marginBottom:8}}>
-          <select value={subject} onChange={e=>setSubject(e.target.value)} style={{...S.sel,flex:1,height:"auto"}}>
+      {/* Log session */}
+      {justFinished&&<div style={{background:"rgba(52,211,153,0.08)",border:"1px solid rgba(52,211,153,0.25)",borderRadius:12,padding:16,marginBottom:10}}>
+        <div style={{fontSize:13,color:"var(--green)",fontWeight:700,marginBottom:12}}>Session complete! Log it?</div>
+        <div style={{marginBottom:8}}>
+          <div style={{fontSize:10,color:"var(--text3)",marginBottom:4,textTransform:"uppercase",letterSpacing:1}}>Subject</div>
+          <select value={subject} onChange={e=>setSubject(e.target.value)} style={{...S.sel,height:"auto"}}>
             {assignedSubjectIds.map(id=>{const s=ALL_SUBJECTS.find(x=>x.id===id);return s?<option key={id} value={id}>{s.emoji} {s.name}</option>:null;})}
             <option value="">Other</option>
           </select>
         </div>
-        <input value={note} onChange={e=>setNote(e.target.value)} placeholder="What did you revise? (optional)" style={{...S.input,fontSize:12,marginBottom:8}}/>
+        <input value={note} onChange={e=>setNote(e.target.value)} placeholder="What did you cover? (optional)" style={{...S.input,fontSize:12,marginBottom:10}}/>
         <div style={{display:"flex",gap:8}}>
-          <button onClick={logSession} style={{...S.btnGreen,flex:1,textAlign:"center"}}>✓ Log this session</button>
-          <button onClick={()=>setJustFinished(false)} style={{...S.btn,fontSize:12}}>Skip</button>
+          <button onClick={logSession} style={{...S.btnGreen,flex:1,textAlign:"center",padding:"8px"}}>✓ Log session</button>
+          <button onClick={()=>{setJustFinished(false);reset();}} style={{...S.btn,fontSize:12}}>Skip</button>
         </div>
       </div>}
 
-      <div style={{fontSize:10,color:"var(--text3)",textAlign:"center",lineHeight:1.6}}>25 min focus · 5 min short break · 15 min long break after 4 sessions</div>
+      <div style={{fontSize:10,color:"var(--text3)",textAlign:"center",lineHeight:1.6}}>Press <kbd style={{background:"var(--bg4)",border:"1px solid var(--border)",borderRadius:3,padding:"1px 4px",fontSize:9}}>P</kbd> anywhere to open · Change duration before starting</div>
     </div>
   </div>;
 }
@@ -1158,7 +1207,7 @@ function RevisionLogger({revisionLog,setRevisionLog,assignedSubjectIds}){
   filtered.forEach(e=>{const d=e.date.split("T")[0];if(!grouped[d])grouped[d]=[];grouped[d].push(e);});
   const sortedDates=Object.keys(grouped).sort((a,b)=>b.localeCompare(a));
 
-  const fmtMins=(m)=>m>=60?`${Math.floor(m/60)}h ${m%60>0?m%60+"m":""}`:`${m}m`;
+  const fmtMins=(m)=>{if(m>=60){var h=Math.floor(m/60);var r=m%60;return h+"h "+(r>0?r+"m":"");}return m+"m";};
   const fmtDate=(iso)=>{const d=new Date(iso+"T00:00:00");return d.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"});};
 
   return <div>
@@ -1189,7 +1238,7 @@ function RevisionLogger({revisionLog,setRevisionLog,assignedSubjectIds}){
           <div style={{fontSize:10,color:"var(--text3)",marginBottom:4,textTransform:"uppercase",letterSpacing:1}}>Subject</div>
           <select value={form.subject} onChange={e=>setForm(p=>({...p,subject:e.target.value}))} style={{...S.sel,height:"auto"}}>
             <option value="">Pick subject</option>
-            {ALL_SUBJECTS.filter(s=>assignedSubjectIds.includes(s.id)||SUBJECTS.find(x=>x.id===s.id)).map(s=><option key={s.id} value={s.id}>{s.emoji} {s.name}</option>)}
+            {ALL_SUBJECTS.filter(s=>assignedSubjectIds.includes(s.id)).map(s=><option key={s.id} value={s.id}>{s.emoji} {s.name}</option>)}
           </select>
         </div>
         <div>
@@ -1257,6 +1306,44 @@ function RevisionLogger({revisionLog,setRevisionLog,assignedSubjectIds}){
   </div>;
 }
 
+// ─── MENU BTN HELPER ──────────────────────────────────────────────────────────
+function MenuBtn({icon,label,onClick,danger}){
+  const [hover,setHover]=useState(false);
+  return <button onClick={onClick}
+    onMouseEnter={()=>setHover(true)} onMouseLeave={()=>setHover(false)}
+    style={{display:"flex",alignItems:"center",gap:8,width:"100%",padding:"7px 12px",borderRadius:8,border:"none",background:hover?"var(--bg3)":"transparent",cursor:"pointer",fontSize:13,color:danger?"#f87171":"var(--text2)",fontFamily:"var(--font)",textAlign:"left",transition:"background 0.12s"}}>
+    <span>{icon}</span><span>{label}</span>
+  </button>;
+}
+
+// ─── SHORTCUTS MODAL ─────────────────────────────────────────────────────────
+function ShortcutsModal({onClose}){
+  const shortcuts=[
+    ["P","Open / close Pomodoro timer"],
+    ["1","Go to Timetable tab"],
+    ["2","Go to Grades tab"],
+    ["3","Go to Spec Tracker tab"],
+    ["4","Go to AI Coach tab"],
+    ["5","Go to Revision Log tab"],
+    ["?  or  /","Show keyboard shortcuts"],
+    ["Esc","Close any open panel"],
+  ];
+  return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:250,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+    <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:16,padding:"28px",width:"100%",maxWidth:420}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+        <div style={{fontSize:15,fontWeight:700,color:"var(--text)"}}>⌨️ Keyboard Shortcuts</div>
+        <button onClick={onClose} style={{...S.btn,padding:"4px 10px"}}>✕</button>
+      </div>
+      <div style={{display:"grid",gap:4}}>
+        {shortcuts.map(([k,desc])=><div key={k} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 0",borderBottom:"1px solid var(--border)"}}>
+          <div style={{background:"var(--bg4)",border:"1px solid var(--border2)",borderRadius:6,padding:"3px 10px",fontFamily:"var(--mono)",fontSize:12,fontWeight:700,color:"var(--text)",minWidth:36,textAlign:"center",whiteSpace:"nowrap"}}>{k}</div>
+          <div style={{fontSize:12,color:"var(--text2)"}}>{desc}</div>
+        </div>)}
+      </div>
+    </div>
+  </div>;
+}
+
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 function App(){
   const [user,setUser]=useState(null);
@@ -1277,7 +1364,71 @@ function App(){
   const [saving,setSaving]=useState(false);
   const [checking,setChecking]=useState(true);
   const [showSettings,setShowSettings]=useState(false);
+  const [showMenu,setShowMenu]=useState(false);
+  const [showShortcuts,setShowShortcuts]=useState(false);
+  const [darkMode,setDarkMode]=useState(()=>localStorage.getItem("gcse_dark")!=="false");
   const saveTimer=useRef(null);
+  const menuRef=useRef(null);
+
+  useEffect(()=>{
+    if(darkMode){document.body.removeAttribute("data-theme");}
+    else{document.body.setAttribute("data-theme","light");}
+    localStorage.setItem("gcse_dark",darkMode?"true":"false");
+  },[darkMode]);
+
+  // Keyboard shortcuts
+  useEffect(()=>{
+    const handler=(e)=>{
+      if(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA"||e.target.tagName==="SELECT")return;
+      if(e.key==="Escape"){setShowPomodoro(false);setShowMenu(false);setShowSettings(false);setShowShortcuts(false);}
+      else if(e.key==="p"||e.key==="P")setShowPomodoro(p=>!p);
+      else if(e.key==="1")setTab("timetable");
+      else if(e.key==="2")setTab("grades");
+      else if(e.key==="3")setTab("spec");
+      else if(e.key==="4")setTab("ai");
+      else if(e.key==="5")setTab("log");
+      else if(e.key==="?"||e.key==="/")setShowShortcuts(p=>!p);
+    };
+    window.addEventListener("keydown",handler);
+    return()=>window.removeEventListener("keydown",handler);
+  },[]);
+
+  // Close menu on outside click
+  useEffect(()=>{
+    const handler=(e)=>{if(menuRef.current&&!menuRef.current.contains(e.target))setShowMenu(false);};
+    document.addEventListener("mousedown",handler);
+    return()=>document.removeEventListener("mousedown",handler);
+  },[]);
+
+  const downloadData=()=>{
+    const data={timetable,spec:subtopicData,grades,tests,groqKey,geminiKey,aiProvider,specRequests,chats,revisionLog,exportedAt:new Date().toISOString(),username:user?.username};
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="gcse-tracker-backup.json";a.click();
+  };
+
+  const uploadData=(e)=>{
+    const file=e.target.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=(ev)=>{
+      try{
+        const d=JSON.parse(ev.target.result);
+        if(d.timetable)setTimetableRaw(d.timetable);
+        if(d.spec)setSubtopicDataRaw(d.spec);
+        if(d.grades)setGradesRaw(d.grades);
+        if(d.tests)setTestsRaw(d.tests);
+        if(d.groqKey!==undefined)setGroqKeyRaw(d.groqKey);
+        if(d.geminiKey!==undefined)setGeminiKeyRaw(d.geminiKey);
+        if(d.aiProvider)setAiProviderRaw(d.aiProvider);
+        if(d.specRequests)setSpecRequestsRaw(d.specRequests);
+        if(d.chats)setChatsRaw(d.chats);
+        if(d.revisionLog)setRevisionLogRaw(d.revisionLog);
+        if(user)saveToFirebase(user.uid,d.timetable||{},d.spec||{},d.grades||{},d.tests||[],d.groqKey||"",d.geminiKey||"",d.aiProvider||"groq",d.specRequests||[],d.chats||[],d.revisionLog||[]);
+        alert("Data restored successfully!");
+      }catch(err){alert("Invalid backup file.");}
+    };
+    reader.readAsText(file);
+    e.target.value="";
+  };
 
   useEffect(()=>{
     const tryRestore=()=>{
@@ -1376,19 +1527,43 @@ function App(){
 
   return <div style={S.root}>
     {showSettings&&<Settings groqKey={groqKey} setGroqKey={setGroqKey} geminiKey={geminiKey} setGeminiKey={setGeminiKey} aiProvider={aiProvider} setAiProvider={setAiProvider} onClose={()=>setShowSettings(false)}/>}
+    {showShortcuts&&<ShortcutsModal onClose={()=>setShowShortcuts(false)}/>}
     <div style={S.header}>
       <div style={S.headerInner}>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           <div style={{width:40,height:40,background:"linear-gradient(135deg,#1a3060,#0d1f40)",border:"1px solid rgba(79,142,255,0.3)",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,boxShadow:"0 0 16px rgba(79,142,255,0.15)"}}>📋</div>
           <div style={S.title}>GCSE Revision Tracker</div>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
           <span style={{fontSize:11,color:saving?"var(--text3)":"var(--green)",fontFamily:"var(--mono)",background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:6,padding:"3px 10px",transition:"color 0.3s"}}>{saving?"⟳ Saving":"✓ Saved"}</span>
-          {(aiProvider==="gemini"?geminiKey:groqKey)&&<span style={{fontSize:11,color:"var(--green)",background:"rgba(74,222,128,0.1)",border:"1px solid rgba(74,222,128,0.2)",borderRadius:4,padding:"2px 7px"}}>🤖 {aiProvider==="gemini"?"Gemini":"Groq"} on</span>}
-          <button onClick={()=>setShowPomodoro(true)} style={{...S.btn,color:"#f87171",borderColor:"rgba(248,113,113,0.3)"}}>🍅 Pomodoro</button>
-          <button onClick={()=>setShowSettings(true)} style={S.btn}>🤖 AI Setup</button>
-          <span style={{fontSize:12,color:"var(--text3)",fontFamily:"var(--mono)"}}>👤 {user.username}</span>
-          <button onClick={handleLogout} style={{...S.btn,color:"var(--text3)"}}>Log out</button>
+          {(aiProvider==="gemini"?geminiKey:groqKey)&&<span style={{fontSize:11,color:"var(--green)",background:"rgba(74,222,128,0.1)",border:"1px solid rgba(74,222,128,0.2)",borderRadius:4,padding:"2px 7px"}}>🤖 {aiProvider==="gemini"?"Gemini":"Groq"}</span>}
+          <button onClick={()=>setShowPomodoro(true)} style={{...S.btn,color:"#f87171",borderColor:"rgba(248,113,113,0.3)"}}>🍅</button>
+          {/* Menu */}
+          <div ref={menuRef} style={{position:"relative"}}>
+            <button onClick={()=>setShowMenu(p=>!p)} style={{...S.btn,fontWeight:700,fontSize:14,padding:"6px 12px",background:showMenu?"var(--bg4)":"var(--bg3)"}}>
+              <span style={{fontSize:13,color:"var(--text2)"}}>👤 {user.username}</span>
+              <span style={{marginLeft:6,color:"var(--text3)",fontSize:11}}>{showMenu?"▲":"▼"}</span>
+            </button>
+            {showMenu&&<div style={{position:"absolute",right:0,top:"calc(100% + 6px)",background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:12,padding:"6px",minWidth:200,zIndex:150,boxShadow:"0 8px 32px rgba(0,0,0,0.35)"}}>
+              <div style={{padding:"6px 12px 8px",borderBottom:"1px solid var(--border)",marginBottom:4}}>
+                <div style={{fontSize:11,color:"var(--text3)",fontFamily:"var(--mono)"}}>Signed in as</div>
+                <div style={{fontSize:12,fontWeight:700,color:"var(--text)"}}>{user.username}</div>
+              </div>
+              <MenuBtn icon="🤖" label="AI Setup" onClick={()=>{setShowSettings(true);setShowMenu(false);}}/>
+              <MenuBtn icon={darkMode?"☀️":"🌙"} label={darkMode?"Light mode":"Dark mode"} onClick={()=>setDarkMode(p=>!p)}/>
+              <div style={{borderTop:"1px solid var(--border)",margin:"4px 0"}}/>
+              <MenuBtn icon="⬇️" label="Download data" onClick={()=>{downloadData();setShowMenu(false);}}/>
+              <label style={{display:"flex",alignItems:"center",gap:8,padding:"7px 12px",borderRadius:8,cursor:"pointer",fontSize:13,color:"var(--text2)",transition:"background 0.12s"}}
+                onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
+                onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                <span>⬆️</span><span>Upload data</span>
+                <input type="file" accept=".json" style={{display:"none"}} onChange={(e)=>{uploadData(e);setShowMenu(false);}}/>
+              </label>
+              <div style={{borderTop:"1px solid var(--border)",margin:"4px 0"}}/>
+              <MenuBtn icon="⌨️" label="Keyboard shortcuts" onClick={()=>{setShowShortcuts(true);setShowMenu(false);}}/>
+              <MenuBtn icon="🚪" label="Log out" onClick={()=>{handleLogout();setShowMenu(false);}} danger={true}/>
+            </div>}
+          </div>
         </div>
       </div>
       <div style={S.tabBar}>
@@ -1401,7 +1576,7 @@ function App(){
       {showPomodoro&&<PomodoroTimer onClose={()=>setShowPomodoro(false)} assignedSubjectIds={assignedSubjectIds} revisionLog={revisionLog} setRevisionLog={setRevisionLog}/>}
       {tab==="timetable"&&<Timetable timetable={timetable} setTimetable={setTimetable} tests={tests} setTests={setTests} groqKey={groqKey} geminiKey={geminiKey} aiProvider={aiProvider} getProgress={getProgress} subtopicData={subtopicData} setShowSettings={setShowSettings}/>}
       {tab==="grades"&&<Grades grades={grades} setGrades={setGrades} getProgress={getProgress} assignedSubjectIds={assignedSubjectIds}/>}
-      {tab==="spec"&&<SpecTracker expSubj={expSubj} setExpSubj={setExpSubj} expTopic={expTopic} setExpTopic={setExpTopic} getVal={getVal} setVal={setVal} getProgress={getProgress} assignedSubjectIds={assignedSubjectIds} user={user} specRequests={specRequests} setSpecRequests={setSpecRequests}/>}
+      {tab==="spec"&&<SpecTracker expSubj={expSubj} setExpSubj={setExpSubj} expTopic={expTopic} setExpTopic={setExpTopic} getVal={getVal} setVal={setVal} getProgress={getProgress} assignedSubjectIds={assignedSubjectIds} user={user} specRequests={specRequests} setSpecRequests={setSpecRequests} aiConfig={{provider:aiProvider,key:aiProvider==="gemini"?geminiKey:groqKey}}/>}
       {tab==="ai"&&<AICoach groqKey={groqKey} geminiKey={geminiKey} aiProvider={aiProvider} subtopicData={subtopicData} tests={tests} chats={chats} setChats={setChats}/>}
       {tab==="log"&&<RevisionLogger revisionLog={revisionLog} setRevisionLog={setRevisionLog} assignedSubjectIds={assignedSubjectIds}/>}
     </div>
