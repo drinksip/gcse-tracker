@@ -37,7 +37,7 @@
     async register(username, password) {
       const email = username.trim().toLowerCase() + "@gcsetracker.app";
       const cred = await createUserWithEmailAndPassword(auth, email, password);
-      await setDoc(doc(db, "users", cred.user.uid), { username: username.trim().toLowerCase(), timetable:{}, spec:{}, grades:{}, tests:[], groqKey:"", geminiKey:"", aiProvider:"groq", specRequests:[], chats:[] });
+      await setDoc(doc(db, "users", cred.user.uid), { username: username.trim().toLowerCase(), timetable:{}, spec:{}, grades:{}, tests:[], groqKey:"", geminiKey:"", aiProvider:"groq", specRequests:[], chats:[], revisionLog:[] });
       return { uid: cred.user.uid, username: username.trim().toLowerCase() };
     },
     async login(username, password) {
@@ -332,7 +332,7 @@ function Settings({groqKey,setGroqKey,geminiKey,setGeminiKey,aiProvider,setAiPro
 
   const providerInfo={
     groq:{
-      label:"Groq (Llama 3.3 70B)",badge:"Free · Fast · No card needed",color:"#7c3aed",
+      label:"Groq (Llama 3.3 70B)",badge:"Free · Works without over-18 account",color:"#7c3aed",
       steps:[
         ["1","Go to Groq Console","Click the link below — just needs an email, no age restriction."],
         ["2","Sign up or log in","Create a free account. No credit card required."],
@@ -345,7 +345,7 @@ function Settings({groqKey,setGroqKey,geminiKey,setGeminiKey,aiProvider,setAiPro
       placeholder:"gsk_...",hint:"Uses Llama 3.3 70B — strong for GCSE revision."
     },
     gemini:{
-      label:"Gemini 2.0 Flash",badge:"Free tier · Google AI · No card needed",color:"#0891b2",
+      label:"Gemini 2.0 Flash",badge:"Free tier · Requires over-18 Google account",color:"#0891b2",
       steps:[
         ["1","Go to Google AI Studio","Click the link below — sign in with any Google account."],
         ["2","Click Get API key","Top-left button in AI Studio."],
@@ -415,7 +415,7 @@ function Settings({groqKey,setGroqKey,geminiKey,setGeminiKey,aiProvider,setAiPro
     </div>
   </div>;
 }
-function Timetable({timetable,setTimetable,tests,setTests,groqKey,geminiKey,aiProvider,getProgress,subtopicData}){
+function Timetable({timetable,setTimetable,tests,setTests,groqKey,geminiKey,aiProvider,getProgress,subtopicData,setShowSettings}){
   const [showSel,setShowSel]=useState(false);
   const [showAI,setShowAI]=useState(false);
   const [aiLoading,setAiLoading]=useState(false);
@@ -617,6 +617,14 @@ function Timetable({timetable,setTimetable,tests,setTests,groqKey,geminiKey,aiPr
         <button onClick={()=>setShowAI(p=>!p)} style={S.btn}>{showAI?"Hide":"Optimise my timetable ✨"}</button>
       </div>
       {showAI&&<div>
+        {/* Active provider indicator */}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:"var(--bg4)",borderRadius:8,padding:"8px 12px",marginBottom:12,border:"1px solid var(--border)"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:12}}>{aiProvider==="gemini"?"✦":"⚡"}</span>
+            <span style={{fontSize:12,color:"var(--text2)"}}>Using: <span style={{color:aiProvider==="gemini"?"#0891b2":"#7c3aed",fontWeight:700}}>{aiProvider==="gemini"?"Gemini 2.0 Flash":"Groq · Llama 3.3 70B"}</span></span>
+          </div>
+          <button onClick={()=>setShowSettings(true)} style={{...S.btn,fontSize:11,padding:"3px 10px"}}>Switch provider</button>
+        </div>
         <div style={{display:"grid",gap:12,marginBottom:16}}>
           <div>
             <div style={{fontSize:11,color:"var(--text3)",marginBottom:5,textTransform:"uppercase",letterSpacing:1}}>Hours available per day</div>
@@ -1004,6 +1012,251 @@ function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getP
   </div>;
 }
 
+// ─── POMODORO TIMER ──────────────────────────────────────────────────────────
+function PomodoroTimer({onClose,assignedSubjectIds,revisionLog,setRevisionLog}){
+  const MODES=[{id:"focus",label:"Focus",mins:25,color:"#4f8eff"},{id:"short",label:"Short Break",mins:5,color:"#34d399"},{id:"long",label:"Long Break",mins:15,color:"#a78bfa"}];
+  const [modeIdx,setModeIdx]=useState(0);
+  const [secsLeft,setSecsLeft]=useState(MODES[0].mins*60);
+  const [running,setRunning]=useState(false);
+  const [session,setSession]=useState(0);
+  const [subject,setSubject]=useState(assignedSubjectIds[0]||"");
+  const [note,setNote]=useState("");
+  const [justFinished,setJustFinished]=useState(false);
+  const intervalRef=useRef(null);
+  const mode=MODES[modeIdx];
+  const total=mode.mins*60;
+  const pct=Math.max(0,(secsLeft/total)*100);
+  const mins=String(Math.floor(secsLeft/60)).padStart(2,"0");
+  const secs=String(secsLeft%60).padStart(2,"0");
+  const circumference=2*Math.PI*52;
+  const dashOffset=circumference*(1-pct/100);
+
+  useEffect(()=>{
+    if(running){
+      intervalRef.current=setInterval(()=>{
+        setSecsLeft(p=>{
+          if(p<=1){
+            clearInterval(intervalRef.current);
+            setRunning(false);
+            if(modeIdx===0){
+              setSession(s=>s+1);
+              setJustFinished(true);
+              try{new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhS1Ckw7+vhF9Ocrewm2JKQY+vq4pYQTiCpaaIWUc3fqSjg1VEN3GUo39QRTVrkpd4Tk04apKTeE5LNWiRkndOS").play();}catch(e){}
+            }
+            return 0;
+          }
+          return p-1;
+        });
+      },1000);
+    }
+    return()=>clearInterval(intervalRef.current);
+  },[running,modeIdx]);
+
+  const switchMode=(idx)=>{setModeIdx(idx);setSecsLeft(MODES[idx].mins*60);setRunning(false);setJustFinished(false);};
+  const reset=()=>{setSecsLeft(mode.mins*60);setRunning(false);setJustFinished(false);};
+
+  const logSession=()=>{
+    const subj=ALL_SUBJECTS.find(s=>s.id===subject);
+    const entry={id:Date.now().toString(),date:new Date().toISOString(),subject:subject,subjectName:subj?.name||subject,emoji:subj?.emoji||"📚",duration:mode.mins,note:note.trim(),type:"Pomodoro"};
+    setRevisionLog(p=>[entry,...(p||[])]);
+    setNote("");setJustFinished(false);
+  };
+
+  const ringColor=mode.color;
+  return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+    <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:20,padding:"28px 32px",width:"100%",maxWidth:400,boxShadow:"0 24px 80px rgba(0,0,0,0.6)"}}>
+      {/* Header */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
+        <div style={{fontSize:15,fontWeight:700,color:"var(--text)"}}>🍅 Pomodoro Timer</div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          {session>0&&<span style={{fontSize:11,color:"var(--green)",background:"rgba(52,211,153,0.1)",border:"1px solid rgba(52,211,153,0.2)",borderRadius:20,padding:"2px 10px",fontFamily:"var(--mono)"}}>{session} 🍅</span>}
+          <button onClick={onClose} style={{...S.btn,padding:"4px 10px",fontSize:12}}>✕</button>
+        </div>
+      </div>
+
+      {/* Mode tabs */}
+      <div style={{display:"flex",gap:4,marginBottom:24,background:"var(--bg4)",borderRadius:10,padding:4}}>
+        {MODES.map((m,i)=><button key={m.id} onClick={()=>switchMode(i)} style={{flex:1,padding:"6px 0",borderRadius:7,border:"none",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"var(--font)",background:modeIdx===i?m.color+"22":"transparent",color:modeIdx===i?m.color:"var(--text3)",transition:"all 0.15s"}}>{m.label}</button>)}
+      </div>
+
+      {/* Ring timer */}
+      <div style={{display:"flex",justifyContent:"center",marginBottom:24}}>
+        <div style={{position:"relative",width:140,height:140}}>
+          <svg width="140" height="140" style={{transform:"rotate(-90deg)"}}>
+            <circle cx="70" cy="70" r="52" fill="none" stroke="var(--border)" strokeWidth="8"/>
+            <circle cx="70" cy="70" r="52" fill="none" stroke={ringColor} strokeWidth="8"
+              strokeDasharray={circumference} strokeDashoffset={dashOffset}
+              style={{transition:"stroke-dashoffset 1s linear",strokeLinecap:"round"}}/>
+          </svg>
+          <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+            <div style={{fontSize:32,fontWeight:700,color:"var(--text)",fontFamily:"var(--mono)",letterSpacing:-1}}>{mins}:{secs}</div>
+            <div style={{fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1,marginTop:2}}>{mode.label}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div style={{display:"flex",gap:8,marginBottom:20,justifyContent:"center"}}>
+        <button onClick={()=>setRunning(p=>!p)} style={{background:running?"rgba(248,113,113,0.15)":"linear-gradient(135deg,"+ringColor+"cc,"+ringColor+")",border:`1px solid ${running?"rgba(248,113,113,0.3)":ringColor+"44"}`,borderRadius:10,color:running?"#f87171":"white",padding:"10px 28px",fontSize:14,fontWeight:700,fontFamily:"var(--font)",cursor:"pointer",transition:"all 0.15s",minWidth:100}}>
+          {running?"⏸ Pause":"▶ Start"}
+        </button>
+        <button onClick={reset} style={{...S.btn,padding:"10px 16px"}}>↺ Reset</button>
+      </div>
+
+      {/* Log session area - shown after a focus session finishes */}
+      {justFinished&&<div style={{background:"rgba(52,211,153,0.08)",border:"1px solid rgba(52,211,153,0.2)",borderRadius:10,padding:14,marginBottom:12}}>
+        <div style={{fontSize:12,color:"var(--green)",fontWeight:600,marginBottom:10}}>🎉 Focus session complete! Log it?</div>
+        <div style={{display:"flex",gap:8,marginBottom:8}}>
+          <select value={subject} onChange={e=>setSubject(e.target.value)} style={{...S.sel,flex:1,height:"auto"}}>
+            {assignedSubjectIds.map(id=>{const s=ALL_SUBJECTS.find(x=>x.id===id);return s?<option key={id} value={id}>{s.emoji} {s.name}</option>:null;})}
+            <option value="">Other</option>
+          </select>
+        </div>
+        <input value={note} onChange={e=>setNote(e.target.value)} placeholder="What did you revise? (optional)" style={{...S.input,fontSize:12,marginBottom:8}}/>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={logSession} style={{...S.btnGreen,flex:1,textAlign:"center"}}>✓ Log this session</button>
+          <button onClick={()=>setJustFinished(false)} style={{...S.btn,fontSize:12}}>Skip</button>
+        </div>
+      </div>}
+
+      <div style={{fontSize:10,color:"var(--text3)",textAlign:"center",lineHeight:1.6}}>25 min focus · 5 min short break · 15 min long break after 4 sessions</div>
+    </div>
+  </div>;
+}
+
+// ─── REVISION LOGGER ─────────────────────────────────────────────────────────
+function RevisionLogger({revisionLog,setRevisionLog,assignedSubjectIds}){
+  const [showAdd,setShowAdd]=useState(false);
+  const [form,setForm]=useState({subject:"",date:new Date().toISOString().split("T")[0],duration:"30",note:"",type:"Self-study"});
+  const [filterSubj,setFilterSubj]=useState("all");
+
+  const addEntry=()=>{
+    if(!form.subject||!form.date)return;
+    const subj=ALL_SUBJECTS.find(s=>s.id===form.subject);
+    const entry={id:Date.now().toString(),date:new Date(form.date).toISOString(),subject:form.subject,subjectName:subj?.name||form.subject,emoji:subj?.emoji||"📚",duration:parseInt(form.duration)||30,note:form.note.trim(),type:form.type};
+    setRevisionLog(p=>[entry,...(p||[])]);
+    setForm({subject:"",date:new Date().toISOString().split("T")[0],duration:"30",note:"",type:"Self-study"});
+    setShowAdd(false);
+  };
+
+  const del=(id)=>setRevisionLog(p=>(p||[]).filter(e=>e.id!==id));
+
+  const logs=revisionLog||[];
+  const filtered=filterSubj==="all"?logs:logs.filter(e=>e.subject===filterSubj);
+
+  // Stats
+  const totalMins=logs.reduce((a,e)=>a+(e.duration||0),0);
+  const todayStr=new Date().toISOString().split("T")[0];
+  const todayMins=logs.filter(e=>e.date.startsWith(todayStr)).reduce((a,e)=>a+(e.duration||0),0);
+  const subjMins={};
+  logs.forEach(e=>{subjMins[e.subject]=(subjMins[e.subject]||0)+(e.duration||0);});
+  const topSubj=Object.entries(subjMins).sort((a,b)=>b[1]-a[1])[0];
+  const topSubjData=topSubj?ALL_SUBJECTS.find(s=>s.id===topSubj[0]):null;
+
+  // Group by date
+  const grouped={};
+  filtered.forEach(e=>{const d=e.date.split("T")[0];if(!grouped[d])grouped[d]=[];grouped[d].push(e);});
+  const sortedDates=Object.keys(grouped).sort((a,b)=>b.localeCompare(a));
+
+  const fmtMins=(m)=>m>=60?`${Math.floor(m/60)}h ${m%60>0?m%60+"m":""}`:`${m}m`;
+  const fmtDate=(iso)=>{const d=new Date(iso+"T00:00:00");return d.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"});};
+
+  return <div>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+      <div style={S.sectionHeader}>📓 Revision Log</div>
+      <button onClick={()=>setShowAdd(p=>!p)} style={S.btnBlue}>{showAdd?"✕ Cancel":"＋ Log session"}</button>
+    </div>
+    <p style={{color:"var(--text3)",fontSize:12,marginBottom:20,marginTop:4}}>Track every revision session to see patterns and stay accountable.</p>
+
+    {/* Stats strip */}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
+      {[
+        {label:"Total time",value:fmtMins(totalMins),icon:"⏱",color:"var(--accent)"},
+        {label:"Today",value:fmtMins(todayMins),icon:"📅",color:"var(--green)"},
+        {label:"Top subject",value:topSubjData?topSubjData.emoji+" "+topSubjData.name:"—",icon:"🏆",color:"var(--amber)"},
+      ].map(st=><div key={st.label} style={{...S.card,textAlign:"center",padding:"14px 12px",margin:0}}>
+        <div style={{fontSize:20,marginBottom:6}}>{st.icon}</div>
+        <div style={{fontSize:16,fontWeight:700,color:st.color,marginBottom:2,fontFamily:"var(--mono)"}}>{st.value}</div>
+        <div style={{fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1}}>{st.label}</div>
+      </div>)}
+    </div>
+
+    {/* Add form */}
+    {showAdd&&<div style={{...S.card,marginBottom:20,border:"1px solid rgba(79,142,255,0.3)",background:"var(--bg3)"}}>
+      <div style={{fontSize:12,color:"var(--accent)",fontWeight:600,marginBottom:14}}>Log a revision session</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+        <div>
+          <div style={{fontSize:10,color:"var(--text3)",marginBottom:4,textTransform:"uppercase",letterSpacing:1}}>Subject</div>
+          <select value={form.subject} onChange={e=>setForm(p=>({...p,subject:e.target.value}))} style={{...S.sel,height:"auto"}}>
+            <option value="">Pick subject</option>
+            {ALL_SUBJECTS.filter(s=>assignedSubjectIds.includes(s.id)||SUBJECTS.find(x=>x.id===s.id)).map(s=><option key={s.id} value={s.id}>{s.emoji} {s.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <div style={{fontSize:10,color:"var(--text3)",marginBottom:4,textTransform:"uppercase",letterSpacing:1}}>Type</div>
+          <select value={form.type} onChange={e=>setForm(p=>({...p,type:e.target.value}))} style={{...S.sel,height:"auto"}}>
+            {["Self-study","Past paper","Flashcards","Mind map","Notes","With tutor","Homework","Other"].map(t=><option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+        <div>
+          <div style={{fontSize:10,color:"var(--text3)",marginBottom:4,textTransform:"uppercase",letterSpacing:1}}>Date</div>
+          <input type="date" value={form.date} onChange={e=>setForm(p=>({...p,date:e.target.value}))} style={{...S.specDate,width:"100%",padding:"7px 8px",fontSize:12}}/>
+        </div>
+        <div>
+          <div style={{fontSize:10,color:"var(--text3)",marginBottom:4,textTransform:"uppercase",letterSpacing:1}}>Duration (mins)</div>
+          <select value={form.duration} onChange={e=>setForm(p=>({...p,duration:e.target.value}))} style={{...S.sel,height:"auto"}}>
+            {["15","20","25","30","45","60","90","120"].map(t=><option key={t} value={t}>{fmtMins(parseInt(t))}</option>)}
+          </select>
+        </div>
+      </div>
+      <input value={form.note} onChange={e=>setForm(p=>({...p,note:e.target.value}))} placeholder="What did you cover? (optional)" style={{...S.input,fontSize:12,marginBottom:12}}/>
+      <button onClick={addEntry} disabled={!form.subject||!form.date} style={{...S.btnBlue,opacity:(!form.subject||!form.date)?0.4:1}}>✓ Save entry</button>
+    </div>}
+
+    {/* Filter */}
+    {logs.length>0&&<div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
+      <span style={{fontSize:11,color:"var(--text3)",fontFamily:"var(--mono)"}}>Filter:</span>
+      {[{id:"all",name:"All"},...ALL_SUBJECTS.filter(s=>subjMins[s.id])].map(s=>{
+        const actualColor=s.id==="all"?"var(--text2)":getActualColor(ALL_SUBJECTS.find(x=>x.id===s.id)?.color||"#8a9ab8");
+        return <button key={s.id} onClick={()=>setFilterSubj(s.id)} style={{...S.btn,fontSize:11,padding:"3px 10px",borderColor:filterSubj===s.id?actualColor:"var(--border2)",color:filterSubj===s.id?actualColor:"var(--text3)"}}>{s.emoji?s.emoji+" ":""}{s.name}</button>;
+      })}
+    </div>}
+
+    {/* Log entries */}
+    {sortedDates.length===0&&<div style={{...S.card,color:"var(--text3)",fontSize:13,textAlign:"center",padding:32}}>No sessions logged yet. Press "Log session" or use the Pomodoro timer!</div>}
+    {sortedDates.map(date=>{
+      const dayTotal=grouped[date].reduce((a,e)=>a+(e.duration||0),0);
+      return <div key={date} style={{marginBottom:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+          <div style={{fontSize:12,fontWeight:600,color:"var(--text2)",fontFamily:"var(--mono)"}}>{fmtDate(date)}</div>
+          <div style={{fontSize:11,color:"var(--text3)",background:"var(--bg3)",borderRadius:5,padding:"2px 8px"}}>{fmtMins(dayTotal)}</div>
+        </div>
+        <div style={{display:"grid",gap:6}}>
+          {grouped[date].map(e=>{
+            const subj=ALL_SUBJECTS.find(s=>s.id===e.subject);
+            const actualColor=getActualColor(subj?.color||"#8a9ab8");
+            return <div key={e.id} style={{display:"flex",alignItems:"center",gap:12,background:"var(--bg2)",borderRadius:8,padding:"10px 14px",border:`1px solid ${actualColor}22`,borderLeft:`3px solid ${actualColor}`}}>
+              <span style={{fontSize:18}}>{e.emoji}</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                  <span style={{color:"var(--text)",fontWeight:600,fontSize:13}}>{e.subjectName}</span>
+                  <span style={{fontSize:10,background:actualColor+"20",color:actualColor,borderRadius:4,padding:"1px 6px"}}>{e.type}</span>
+                  {e.type==="Pomodoro"&&<span style={{fontSize:10,color:"var(--text3)"}}>🍅</span>}
+                </div>
+                {e.note&&<div style={{fontSize:11,color:"var(--text3)",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{e.note}</div>}
+              </div>
+              <div style={{textAlign:"right",flexShrink:0}}>
+                <div style={{fontSize:13,fontWeight:700,color:"var(--text2)",fontFamily:"var(--mono)"}}>{fmtMins(e.duration)}</div>
+                <button onClick={()=>del(e.id)} style={{...S.btn,padding:"1px 6px",fontSize:10,color:"var(--text3)",marginTop:2}}>✕</button>
+              </div>
+            </div>;
+          })}
+        </div>
+      </div>;
+    })}
+  </div>;
+}
+
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 function App(){
   const [user,setUser]=useState(null);
@@ -1017,6 +1270,8 @@ function App(){
   const [aiProvider,setAiProviderRaw]=useState("groq");
   const [specRequests,setSpecRequestsRaw]=useState([]);
   const [chats,setChatsRaw]=useState([]);
+  const [revisionLog,setRevisionLogRaw]=useState([]);
+  const [showPomodoro,setShowPomodoro]=useState(false);
   const [expSubj,setExpSubj]=useState(null);
   const [expTopic,setExpTopic]=useState({});
   const [saving,setSaving]=useState(false);
@@ -1035,7 +1290,7 @@ function App(){
               setTimetableRaw(snap.timetable||{});setSubtopicDataRaw(snap.spec||{});
               setGradesRaw(snap.grades||{});setTestsRaw(snap.tests||[]);setGroqKeyRaw(snap.groqKey||"");
               setGeminiKeyRaw(snap.geminiKey||"");setAiProviderRaw(snap.aiProvider||"groq");
-              setSpecRequestsRaw(snap.specRequests||[]);setChatsRaw(snap.chats||[]);
+              setSpecRequestsRaw(snap.specRequests||[]);setChatsRaw(snap.chats||[]);setRevisionLogRaw(snap.revisionLog||[]);
               setUser({uid:fbUser.uid,username:snap.username||fbUser.email.replace("@gcsetracker.app","")});
             }
           }catch(e){console.error(e);}
@@ -1048,36 +1303,48 @@ function App(){
     return()=>{if(typeof unsub==="function")unsub();};
   },[]);
 
-  const saveToFirebase=useCallback(async(uid,tt,spec,gr,ts,gk,gmk,ap,sr,ch)=>{
+  const saveToFirebase=useCallback(async(uid,tt,spec,gr,ts,gk,gmk,ap,sr,ch,rl)=>{
     if(!uid||!window.__firebase)return;
     setSaving(true);
-    await window.__firebase.saveData(uid,{timetable:tt,spec,grades:gr,tests:ts,groqKey:gk,geminiKey:gmk,aiProvider:ap,specRequests:sr,chats:ch});
+    await window.__firebase.saveData(uid,{timetable:tt,spec,grades:gr,tests:ts,groqKey:gk,geminiKey:gmk,aiProvider:ap,specRequests:sr,chats:ch,revisionLog:rl});
     setSaving(false);
   },[]);
 
-  const debouncedSave=useCallback((uid,tt,spec,gr,ts,gk,gmk,ap,sr,ch)=>{
+  const debouncedSave=useCallback((uid,tt,spec,gr,ts,gk,gmk,ap,sr,ch,rl)=>{
     clearTimeout(saveTimer.current);
-    saveTimer.current=setTimeout(()=>saveToFirebase(uid,tt,spec,gr,ts,gk,gmk,ap,sr,ch),1500);
+    saveTimer.current=setTimeout(()=>saveToFirebase(uid,tt,spec,gr,ts,gk,gmk,ap,sr,ch,rl),1500);
   },[saveToFirebase]);
 
-  const setTimetable=v=>{const next=typeof v==="function"?v(timetable):v;setTimetableRaw(next);if(user)debouncedSave(user.uid,next,subtopicData,grades,tests,groqKey,geminiKey,aiProvider,specRequests,chats);};
-  const setSubtopicData=v=>{const next=typeof v==="function"?v(subtopicData):v;setSubtopicDataRaw(next);if(user)debouncedSave(user.uid,timetable,next,grades,tests,groqKey,geminiKey,aiProvider,specRequests,chats);};
-  const setGrades=v=>{const next=typeof v==="function"?v(grades):v;setGradesRaw(next);if(user)debouncedSave(user.uid,timetable,subtopicData,next,tests,groqKey,geminiKey,aiProvider,specRequests,chats);};
-  const setTests=v=>{const next=typeof v==="function"?v(tests):v;setTestsRaw(next);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,next,groqKey,geminiKey,aiProvider,specRequests,chats);};
-  const setGroqKey=v=>{setGroqKeyRaw(v);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,v,geminiKey,aiProvider,specRequests,chats);};
-  const setGeminiKey=v=>{setGeminiKeyRaw(v);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,groqKey,v,aiProvider,specRequests,chats);};
-  const setAiProvider=v=>{setAiProviderRaw(v);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,groqKey,geminiKey,v,specRequests,chats);};
-  const setSpecRequests=v=>{const next=typeof v==="function"?v(specRequests):v;setSpecRequestsRaw(next);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,groqKey,geminiKey,aiProvider,next,chats);};
+  const setTimetable=v=>{const next=typeof v==="function"?v(timetable):v;setTimetableRaw(next);if(user)debouncedSave(user.uid,next,subtopicData,grades,tests,groqKey,geminiKey,aiProvider,specRequests,chats,revisionLog);};
+  const setSubtopicData=v=>{const next=typeof v==="function"?v(subtopicData):v;setSubtopicDataRaw(next);if(user)debouncedSave(user.uid,timetable,next,grades,tests,groqKey,geminiKey,aiProvider,specRequests,chats,revisionLog);};
+  const setGrades=v=>{const next=typeof v==="function"?v(grades):v;setGradesRaw(next);if(user)debouncedSave(user.uid,timetable,subtopicData,next,tests,groqKey,geminiKey,aiProvider,specRequests,chats,revisionLog);};
+  const setTests=v=>{const next=typeof v==="function"?v(tests):v;setTestsRaw(next);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,next,groqKey,geminiKey,aiProvider,specRequests,chats,revisionLog);};
+  const setGroqKey=v=>{setGroqKeyRaw(v);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,v,geminiKey,aiProvider,specRequests,chats,revisionLog);};
+  const setGeminiKey=v=>{setGeminiKeyRaw(v);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,groqKey,v,aiProvider,specRequests,chats,revisionLog);};
+  const setAiProvider=v=>{setAiProviderRaw(v);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,groqKey,geminiKey,v,specRequests,chats,revisionLog);};
+  const setSpecRequests=v=>{const next=typeof v==="function"?v(specRequests):v;setSpecRequestsRaw(next);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,groqKey,geminiKey,aiProvider,next,chats,revisionLog);};
+  const setRevisionLog=v=>{
+    if(typeof v==="function"){
+      setRevisionLogRaw(prev=>{
+        const next=v(prev);
+        setTimeout(()=>{if(user)saveToFirebase(user.uid,timetable,subtopicData,grades,tests,groqKey,geminiKey,aiProvider,specRequests,chats,next);},0);
+        return next;
+      });
+    } else {
+      setRevisionLogRaw(v);
+      if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,groqKey,geminiKey,aiProvider,specRequests,chats,v);
+    }
+  };
   const setChats=v=>{
     if(typeof v==="function"){
       setChatsRaw(prev=>{
         const next=v(prev);
-        setTimeout(()=>{if(user)saveToFirebase(user.uid,timetable,subtopicData,grades,tests,groqKey,geminiKey,aiProvider,specRequests,next);},0);
+        setTimeout(()=>{if(user)saveToFirebase(user.uid,timetable,subtopicData,grades,tests,groqKey,geminiKey,aiProvider,specRequests,next,revisionLog);},0);
         return next;
       });
     } else {
       setChatsRaw(v);
-      if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,groqKey,geminiKey,aiProvider,specRequests,v);
+      if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,groqKey,geminiKey,aiProvider,specRequests,v,revisionLog);
     }
   };
 
@@ -1085,12 +1352,12 @@ function App(){
     setTimetableRaw(data.timetable||{});setSubtopicDataRaw(data.spec||{});
     setGradesRaw(data.grades||{});setTestsRaw(data.tests||[]);setGroqKeyRaw(data.groqKey||"");
     setGeminiKeyRaw(data.geminiKey||"");setAiProviderRaw(data.aiProvider||"groq");
-    setSpecRequestsRaw(data.specRequests||[]);setChatsRaw(data.chats||[]);
+    setSpecRequestsRaw(data.specRequests||[]);setChatsRaw(data.chats||[]);setRevisionLogRaw(data.revisionLog||[]);
     setUser({uid,username});
   };
   const handleLogout=async()=>{
     await window.__firebase.logout();
-    setUser(null);setTimetableRaw({});setSubtopicDataRaw({});setGradesRaw({});setTestsRaw([]);setGroqKeyRaw("");setGeminiKeyRaw("");setAiProviderRaw("groq");setSpecRequestsRaw([]);setChatsRaw([]);
+    setUser(null);setTimetableRaw({});setSubtopicDataRaw({});setGradesRaw({});setTestsRaw([]);setGroqKeyRaw("");setGeminiKeyRaw("");setAiProviderRaw("groq");setSpecRequestsRaw([]);setChatsRaw([]);setRevisionLogRaw([]);
   };
 
   const getVal=(sId,tId,i)=>subtopicData[`${sId}__${tId}__${i}`]||{coverage:"Not covered",rag:"None",date:""};
@@ -1118,22 +1385,25 @@ function App(){
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <span style={{fontSize:11,color:saving?"var(--text3)":"var(--green)",fontFamily:"var(--mono)",background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:6,padding:"3px 10px",transition:"color 0.3s"}}>{saving?"⟳ Saving":"✓ Saved"}</span>
           {(aiProvider==="gemini"?geminiKey:groqKey)&&<span style={{fontSize:11,color:"var(--green)",background:"rgba(74,222,128,0.1)",border:"1px solid rgba(74,222,128,0.2)",borderRadius:4,padding:"2px 7px"}}>🤖 {aiProvider==="gemini"?"Gemini":"Groq"} on</span>}
+          <button onClick={()=>setShowPomodoro(true)} style={{...S.btn,color:"#f87171",borderColor:"rgba(248,113,113,0.3)"}}>🍅 Pomodoro</button>
           <button onClick={()=>setShowSettings(true)} style={S.btn}>🤖 AI Setup</button>
           <span style={{fontSize:12,color:"var(--text3)",fontFamily:"var(--mono)"}}>👤 {user.username}</span>
           <button onClick={handleLogout} style={{...S.btn,color:"var(--text3)"}}>Log out</button>
         </div>
       </div>
       <div style={S.tabBar}>
-        {[["timetable","📅 Timetable"],["grades","📊 Grades"],["spec","📖 Spec Tracker"],["ai","🤖 AI Coach"]].map(([id,label])=>
+        {[["timetable","📅 Timetable"],["grades","📊 Grades"],["spec","📖 Spec Tracker"],["ai","🤖 AI Coach"],["log","📓 Rev. Log"]].map(([id,label])=>
           <button key={id} style={{...S.tabBtn,...(tab===id?S.tabActive:{})}} onClick={()=>setTab(id)}>{label}</button>
         )}
       </div>
     </div>
     <div style={S.body}>
-      {tab==="timetable"&&<Timetable timetable={timetable} setTimetable={setTimetable} tests={tests} setTests={setTests} groqKey={groqKey} geminiKey={geminiKey} aiProvider={aiProvider} getProgress={getProgress} subtopicData={subtopicData}/>}
+      {showPomodoro&&<PomodoroTimer onClose={()=>setShowPomodoro(false)} assignedSubjectIds={assignedSubjectIds} revisionLog={revisionLog} setRevisionLog={setRevisionLog}/>}
+      {tab==="timetable"&&<Timetable timetable={timetable} setTimetable={setTimetable} tests={tests} setTests={setTests} groqKey={groqKey} geminiKey={geminiKey} aiProvider={aiProvider} getProgress={getProgress} subtopicData={subtopicData} setShowSettings={setShowSettings}/>}
       {tab==="grades"&&<Grades grades={grades} setGrades={setGrades} getProgress={getProgress} assignedSubjectIds={assignedSubjectIds}/>}
       {tab==="spec"&&<SpecTracker expSubj={expSubj} setExpSubj={setExpSubj} expTopic={expTopic} setExpTopic={setExpTopic} getVal={getVal} setVal={setVal} getProgress={getProgress} assignedSubjectIds={assignedSubjectIds} user={user} specRequests={specRequests} setSpecRequests={setSpecRequests}/>}
-      {tab==="ai"&&<AICoach groqKey={groqKey} geminiKey={geminiKey} aiProvider={aiProvider} subtopicData={subtopicData} tests={tests} chats={chats} setChats={setChats}/>}
+      {tab==="ai"&&<AICoach groqKey={groqKey} geminiKey={geminiKey} aiProvider={aiProvider} subtopicData={subtopicData} tests={tests} chats={chats} setChats={setChats}/>
+      {tab==="log"&&<RevisionLogger revisionLog={revisionLog} setRevisionLog={setRevisionLog} assignedSubjectIds={assignedSubjectIds}/>}
     </div>
   </div>;
 }
