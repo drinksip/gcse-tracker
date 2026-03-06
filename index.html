@@ -885,9 +885,11 @@ function Grades({grades,setGrades,getProgress,assignedSubjectIds}){
 function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getProgress,assignedSubjectIds,user,specRequests,setSpecRequests,aiConfig}){
   const toggleTopic=id=>setExpTopic(p=>({...p,[id]:!p[id]}));
   const [reqBoard,setReqBoard]=useState({});
+  const [gizmoToast,setGizmoToast]=useState(false);
   const gizmoSearch=(q)=>{
     try{navigator.clipboard.writeText(q);}catch(e){}
-    window.open("https://app.gizmo.ai/decks/public","_blank");
+    setGizmoToast(q);
+    setTimeout(()=>{window.open("https://app.gizmo.ai/decks/public","_blank");setGizmoToast(false);},2200);
   };
   const [confirming,setConfirming]=useState(null);
   const [reqLoading,setReqLoading]=useState(false);
@@ -931,6 +933,12 @@ function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getP
   };
 
   return <div>
+    {gizmoToast&&<div style={{position:"fixed",bottom:28,left:"50%",transform:"translateX(-50%)",background:"#1a2540",border:"1px solid rgba(124,58,237,0.4)",borderRadius:12,padding:"14px 22px",zIndex:500,boxShadow:"0 8px 32px rgba(0,0,0,0.4)",textAlign:"center",minWidth:300,maxWidth:420}}>
+      <div style={{fontSize:16,marginBottom:6}}>🃏</div>
+      <div style={{fontSize:13,fontWeight:600,color:"var(--text)",marginBottom:4}}>Redirecting to Gizmo...</div>
+      <div style={{fontSize:11,color:"var(--text3)",lineHeight:1.6}}>Search term copied to clipboard.<br/>Just paste it into the Gizmo search bar.</div>
+      <div style={{fontSize:10,color:"#a78bfa",marginTop:8,fontFamily:"var(--mono)",background:"rgba(124,58,237,0.1)",borderRadius:6,padding:"4px 10px",display:"inline-block"}}>"{gizmoToast}"</div>
+    </div>}
     {gizmoModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.78)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
       <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:16,padding:28,width:"100%",maxWidth:540,maxHeight:"85vh",display:"flex",flexDirection:"column"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
@@ -1369,15 +1377,8 @@ function App(){
   const [showSettings,setShowSettings]=useState(false);
   const [showMenu,setShowMenu]=useState(false);
   const [showShortcuts,setShowShortcuts]=useState(false);
-  const [darkMode,setDarkMode]=useState(()=>localStorage.getItem("gcse_dark")!=="false");
   const saveTimer=useRef(null);
   const menuRef=useRef(null);
-
-  useEffect(()=>{
-    if(darkMode){document.body.removeAttribute("data-theme");}
-    else{document.body.setAttribute("data-theme","light");}
-    localStorage.setItem("gcse_dark",darkMode?"true":"false");
-  },[darkMode]);
 
   // Keyboard shortcuts
   useEffect(()=>{
@@ -1553,7 +1554,6 @@ function App(){
                 <div style={{fontSize:12,fontWeight:700,color:"var(--text)"}}>{user.username}</div>
               </div>
               <MenuBtn icon="🤖" label="AI Setup" onClick={()=>{setShowSettings(true);setShowMenu(false);}}/>
-              <MenuBtn icon={darkMode?"☀️":"🌙"} label={darkMode?"Light mode":"Dark mode"} onClick={()=>setDarkMode(p=>!p)}/>
               <div style={{borderTop:"1px solid var(--border)",margin:"4px 0"}}/>
               <MenuBtn icon="⬇️" label="Download data" onClick={()=>{downloadData();setShowMenu(false);}}/>
               <label style={{display:"flex",alignItems:"center",gap:8,padding:"7px 12px",borderRadius:8,cursor:"pointer",fontSize:13,color:"var(--text2)",transition:"background 0.12s"}}
