@@ -1,0 +1,708 @@
+{
+  "maths": {
+    "name": "Maths",
+    "topics": [
+      {
+        "name": "Number",
+        "subtopics": [
+          "Types of Number (Prime, Composite, Factors, Multiples)",
+          "BIDMAS & Order of Operations",
+          "Fractions, Decimals & Percentages - Conversions",
+          "Calculating with Fractions",
+          "Calculating Percentages",
+          "Percentage Change & Reverse Percentages",
+          "Powers & Indices",
+          "Square Roots & Cube Roots",
+          "Surds - Simplifying",
+          "Standard Form - Converting",
+          "Standard Form - Calculations",
+          "Bounds & Error Intervals",
+          "Ratio Problems",
+          "Proportion - Direct & Inverse",
+          "Rounding & Estimation"
+        ]
+      },
+      {
+        "name": "Algebra",
+        "subtopics": [
+          "Simplifying Expressions",
+          "Expanding Single Brackets",
+          "Expanding Double Brackets",
+          "Factorising - Single Brackets",
+          "Factorising Quadratics",
+          "Solving Linear Equations",
+          "Solving Quadratic Equations - Factorising",
+          "Solving Quadratic Equations - Quadratic Formula",
+          "Solving Simultaneous Equations",
+          "Inequalities - Linear",
+          "Inequalities - Quadratic",
+          "Sequences - Finding Terms",
+          "Sequences - nth Term (Arithmetic)",
+          "Functions & Function Notation",
+          "Composite Functions",
+          "Inverse Functions",
+          "Algebraic Proof",
+          "Solving Equations with Brackets"
+        ]
+      },
+      {
+        "name": "Statistics & Probability",
+        "subtopics": [
+          "Probability - Basic",
+          "Probability - Relative Frequency",
+          "Tree Diagrams - Probability",
+          "Venn Diagrams - Probability",
+          "Conditional Probability",
+          "Frequency Tables & Mode",
+          "Mean, Median & Range",
+          "Grouped Data - Estimating Mean",
+          "Cumulative Frequency - Median & Quartiles",
+          "Histograms - Frequency Density",
+          "Scatter Graphs & Correlation",
+          "Time Series & Moving Averages",
+          "Sampling Methods",
+          "Comparing Distributions"
+        ]
+      },
+      {
+        "name": "Ratio & Proportion",
+        "subtopics": [
+          "Ratio - Simplifying & Comparing",
+          "Sharing in a Ratio",
+          "Direct Proportion Problems",
+          "Inverse Proportion Problems",
+          "Speed, Distance & Time",
+          "Density & Pressure Calculations",
+          "Exchange Rates",
+          "Best Buys & Value for Money",
+          "Growth & Decay - Percentage",
+          "Compound Interest",
+          "Population Growth"
+        ]
+      }
+    ]
+  },
+  "english": {
+    "name": "English",
+    "topics": [
+      {
+        "name": "Language Analysis",
+        "subtopics": [
+          "Language Features - Vocabulary",
+          "Language Features - Figurative Language",
+          "Language Features - Sentence Structure",
+          "Tone & Register Analysis",
+          "Analysing Writer's Methods",
+          "Comparing Texts - Language",
+          "Effect on Reader - Explaining",
+          "Persuasive Techniques",
+          "Rhetorical Devices"
+        ]
+      },
+      {
+        "name": "Creative Writing",
+        "subtopics": [
+          "Narrative Writing - Plot & Structure",
+          "Narrative Writing - Character Development",
+          "Descriptive Writing - Imagery",
+          "Descriptive Writing - Atmosphere",
+          "Writing for Different Audiences",
+          "Writing for Different Purposes",
+          "Using Paragraphs Effectively",
+          "Dialogue in Writing"
+        ]
+      },
+      {
+        "name": "Shakespeare - Macbeth",
+        "subtopics": [
+          "Macbeth - Plot Summary & Timeline",
+          "Macbeth - Character Analysis",
+          "Lady Macbeth - Power & Ambition",
+          "Macbeth - Themes: Ambition",
+          "Macbeth - Themes: Guilt & Paranoia",
+          "Macbeth - Themes: Fate vs Ambition",
+          "Macbeth - Key Quotes & Analysis",
+          "Macbeth - Context: Jacobean Era",
+          "Macbeth - Comparing Characters"
+        ]
+      },
+      {
+        "name": "19th Century Novel - A Christmas Carol",
+        "subtopics": [
+          "A Christmas Carol - Plot Overview",
+          "Scrooge - Character Arc",
+          "The Ghosts - Purpose & Symbolism",
+          "A Christmas Carol - Themes: Redemption",
+          "A Christmas Carol - Themes: Charity",
+          "A Christmas Carol - Key Quotes",
+          "A Christmas Carol - Victorian Context",
+          "A Christmas Carol - Social Issues"
+        ]
+      },
+      {
+        "name": "Modern Drama - An Inspector Calls",
+        "subtopics": [
+          "An Inspector Calls - Plot & Structure",
+          "Character Analysis - The Inspector",
+          "Character Analysis - The Birlings",
+          "An Inspector Calls - Themes: Responsibility",
+          "An Inspector Calls - Themes: Class",
+          "An Inspector Calls - Key Quotes",
+          "An Inspector Calls - 1912 vs 1945 Context",
+          "Priestley's Message - Social Responsibility"
+        ]
+      },
+      {
+        "name": "Poetry - Power & Conflict",
+        "subtopics": [
+          "Poetry Analysis - Structure & Form",
+          "Poetry Analysis - Language & Imagery",
+          "Ozymandias - Analysis & Themes",
+          "London - Blake's Social Criticism",
+          "The Prelude - Nature & Memory",
+          "My Last Duchess - Possessiveness",
+          "Charge of the Light Brigade - War",
+          "Exposure - Owen's War Poetry",
+          "Remains - Modern War Poetry",
+          "Poppies - Maternal Grief",
+          "War Photographer - Perspective",
+          "Comparing Poems - Themes",
+          "Comparing Poems - Methods"
+        ]
+      }
+    ]
+  },
+  "biology": {
+    "name": "Biology",
+    "topics": [
+      {
+        "name": "Cell Biology",
+        "subtopics": [
+          "Cell Structures & Functions",
+          "Prokaryotic vs Eukaryotic Cells",
+          "Diffusion - Concentration Gradients",
+          "Osmosis - Water Movement",
+          "Active Transport - Energy Required",
+          "Cell Membrane - Selectively Permeable",
+          "Cell Division - Mitosis & Growth",
+          "Stem Cells - Differentiation",
+          "DNA Structure & Replication"
+        ]
+      },
+      {
+        "name": "Organisation & Homeostasis",
+        "subtopics": [
+          "Enzymes - Structure & Function",
+          "Enzyme Reactions - Factors Affecting Rate",
+          "Digestion - Enzymes & Breakdown",
+          "Heart Structure & Function",
+          "Blood Circulation - Pathways",
+          "Blood Cells & Plasma - Roles",
+          "Respiration - Aerobic & Anaerobic",
+          "Energy Transfer & Efficiency",
+          "Nervous System - Reflex Arc",
+          "Hormonal Coordination - Feedback",
+          "Blood Glucose Regulation",
+          "Thermoregulation - Body Temperature"
+        ]
+      },
+      {
+        "name": "Infection & Immunity",
+        "subtopics": [
+          "Pathogens - Bacteria, Viruses, Fungi",
+          "Immune Response - White Blood Cells",
+          "Antibodies & Antigens",
+          "Vaccination - How it Works",
+          "Antibiotics - Killing Bacteria",
+          "Antibiotic Resistance - Evolution",
+          "Plant Defence - Physical & Chemical",
+          "Disease Prevention & Control"
+        ]
+      },
+      {
+        "name": "Genetics & Evolution",
+        "subtopics": [
+          "DNA & Chromosomes",
+          "Genes & Alleles",
+          "Inheritance - Dominant & Recessive",
+          "Punnett Squares - Probability",
+          "Genetic Crosses - Test Crosses",
+          "Mutations - Types & Effects",
+          "Natural Selection - Survival of the Fittest",
+          "Adaptation - Evolutionary Evidence",
+          "Evolution - Speciation & Divergence",
+          "Biodiversity & Classification",
+          "Extinction - Causes & Effects"
+        ]
+      },
+      {
+        "name": "Ecology",
+        "subtopics": [
+          "Ecosystems - Communities & Habitats",
+          "Food Chains & Food Webs",
+          "Energy Transfer - Trophic Levels",
+          "Succession - Primary & Secondary",
+          "Populations - Growth & Limiting Factors",
+          "Competition - Intraspecific & Interspecific",
+          "Predator-Prey Relationships",
+          "Decomposition & Nutrient Cycling",
+          "Carbon Cycle - Photosynthesis & Respiration",
+          "Water Cycle - Evaporation & Condensation",
+          "Biodiversity - Alpha & Beta",
+          "Conservation - Protection Methods"
+        ]
+      }
+    ]
+  },
+  "chemistry": {
+    "name": "Chemistry",
+    "topics": [
+      {
+        "name": "Atomic Structure & Periodic Table",
+        "subtopics": [
+          "Atomic Structure - Protons, Neutrons, Electrons",
+          "Atomic Number & Mass Number",
+          "Isotopes - Same Element, Different Mass",
+          "Relative Atomic Mass - Average",
+          "Electron Configuration - Shells",
+          "Periodic Table - Groups & Periods",
+          "Group 1 - Alkali Metals",
+          "Group 7 - Halogens",
+          "Group 0 - Noble Gases",
+          "Transition Metals - Properties"
+        ]
+      },
+      {
+        "name": "Chemical Reactions",
+        "subtopics": [
+          "Acids & Bases - pH Scale",
+          "Neutralisation - Acid + Base",
+          "Salts - Formation from Neutralisation",
+          "Reactivity Series - Metals",
+          "Metal Reactions - With Acids & Water",
+          "Displacement Reactions",
+          "Oxidation & Reduction - Electron Transfer",
+          "Redox Reactions - Identifying",
+          "Combustion - Exothermic Reactions",
+          "Thermal Decomposition"
+        ]
+      },
+      {
+        "name": "Quantitative Chemistry",
+        "subtopics": [
+          "Relative Formula Mass - Calculating",
+          "Moles - Converting Mass to Moles",
+          "Molar Mass - From Relative Formula Mass",
+          "Balancing Chemical Equations",
+          "Stoichiometry - Mole Ratios",
+          "Limiting Reactants - Which Runs Out?",
+          "Percentage Yield - Actual vs Theoretical",
+          "Atom Economy - Efficiency",
+          "Concentration - Molarity Calculations",
+          "Titration - Acid-Base Analysis"
+        ]
+      },
+      {
+        "name": "Energy Changes",
+        "subtopics": [
+          "Exothermic Reactions - Heat Released",
+          "Endothermic Reactions - Heat Absorbed",
+          "Energy Level Diagrams",
+          "Bond Breaking & Making - Energy",
+          "Calculating Energy Changes",
+          "Combustion & Energy",
+          "Calorimetry - Heat Calculations"
+        ]
+      },
+      {
+        "name": "Rate of Reaction",
+        "subtopics": [
+          "Collision Theory - Particles Colliding",
+          "Factors Affecting Rate - Temperature",
+          "Factors Affecting Rate - Concentration",
+          "Factors Affecting Rate - Surface Area",
+          "Factors Affecting Rate - Catalysts",
+          "Reversible Reactions - Equilibrium",
+          "Le Chatelier's Principle - Shifting Equilibrium",
+          "Position of Equilibrium - Pressure & Temperature"
+        ]
+      }
+    ]
+  },
+  "computerScience": {
+    "name": "Computer Science",
+    "topics": [
+      {
+        "name": "Algorithms & Logic",
+        "subtopics": [
+          "Computational Thinking - Abstraction",
+          "Computational Thinking - Decomposition",
+          "Computational Thinking - Pattern Recognition",
+          "Algorithm Design - Pseudocode",
+          "Linear Search - Step Through",
+          "Binary Search - Divide & Conquer",
+          "Sorting - Bubble Sort",
+          "Sorting - Insertion Sort",
+          "Standard Algorithms - Reverse, Find Max/Min",
+          "Trace Tables - Following Code"
+        ]
+      },
+      {
+        "name": "Programming Concepts",
+        "subtopics": [
+          "Variables & Data Types",
+          "Constants - Fixed Values",
+          "Operators - Arithmetic & Logical",
+          "Boolean Logic - True & False",
+          "IF Statements - Conditional Logic",
+          "IF-ELSE - Multiple Paths",
+          "Switch Statements - Multiple Conditions",
+          "Loops - FOR Loops",
+          "Loops - WHILE Loops",
+          "Functions & Procedures",
+          "Parameters & Arguments",
+          "Return Values",
+          "Variable Scope - Local & Global",
+          "String Methods - Concatenation & Length"
+        ]
+      },
+      {
+        "name": "Data Structures",
+        "subtopics": [
+          "Arrays - Storing Multiple Values",
+          "Array Operations - Adding & Removing",
+          "2D Arrays - Rows & Columns",
+          "Records - Grouping Data",
+          "Stacks - LIFO (Last In First Out)",
+          "Queues - FIFO (First In First Out)",
+          "Lists - Dynamic Arrays",
+          "Dictionaries - Key-Value Pairs",
+          "Hash Tables - Fast Lookup"
+        ]
+      },
+      {
+        "name": "Networks & Cybersecurity",
+        "subtopics": [
+          "Networks - LAN vs WAN",
+          "Internet Protocols - TCP/IP",
+          "IP Addresses - Identifying Devices",
+          "DNS - Domain Name System",
+          "Routers & Routing - Data Flow",
+          "Network Security - Firewalls",
+          "User Access Control - Passwords & Encryption",
+          "Malware - Viruses, Trojans, Ransomware",
+          "Phishing & Social Engineering",
+          "Data Protection - Encryption"
+        ]
+      },
+      {
+        "name": "Hardware & Software",
+        "subtopics": [
+          "CPU - Fetch, Decode, Execute",
+          "Multi-Core Processors - Parallel Processing",
+          "RAM - Temporary Storage & Speed",
+          "ROM - Permanent Storage",
+          "Storage - HDD vs SSD",
+          "Virtual Memory - Extending RAM",
+          "Operating Systems - Resource Management",
+          "System Software - BIOS & Device Drivers",
+          "Application Software - Programs & Apps",
+          "Utility Software - Maintenance Tools"
+        ]
+      },
+      {
+        "name": "Data Representation",
+        "subtopics": [
+          "Binary Numbers - Base 2",
+          "Denary Numbers - Base 10",
+          "Hexadecimal - Base 16",
+          "Binary to Denary Conversion",
+          "Denary to Binary Conversion",
+          "Binary Addition - Carrying",
+          "Character Encoding - ASCII",
+          "Unicode - Extended Characters",
+          "File Sizes - Bytes to Terabytes",
+          "Sound Representation - Sampling & Bitrate",
+          "Data Compression - Lossy vs Lossless"
+        ]
+      }
+    ]
+  },
+  "religiousStudies": {
+    "name": "Religious Studies",
+    "topics": [
+      {
+        "name": "Christian Beliefs & Teachings",
+        "subtopics": [
+          "Nature of God - Omnipotence & Benevolence",
+          "The Trinity - Father, Son, Holy Spirit",
+          "Creation - Genesis Account",
+          "Jesus Christ - Incarnation",
+          "Salvation - Atonement Through Christ",
+          "Forgiveness - Biblical Teaching",
+          "Resurrection & Afterlife",
+          "Heaven, Hell & Purgatory",
+          "Miracles - Biblical Interpretation",
+          "Sin & Redemption"
+        ]
+      },
+      {
+        "name": "Christian Practices & Ethics",
+        "subtopics": [
+          "Worship - Liturgical Services",
+          "Prayer - Different Types",
+          "The Lord's Prayer - Analysis",
+          "Sacraments - Baptism & Eucharist",
+          "Bible - Authority & Interpretation",
+          "Ten Commandments - Moral Guidance",
+          "Charity & Justice - Social Responsibility",
+          "Pilgrimage - Sacred Journeys",
+          "Festivals - Christmas & Easter",
+          "Church Community - Support & Belonging"
+        ]
+      },
+      {
+        "name": "Islamic Beliefs & Teachings",
+        "subtopics": [
+          "Allah - Nature & Attributes",
+          "Tawhid - Monotheism",
+          "The Five Pillars - Practices",
+          "Muhammad - The Final Prophet",
+          "The Qur'an - Revelation & Authority",
+          "Hadith - Prophet's Teachings",
+          "Angels - Gabriel & Others",
+          "Akhirah - Life After Death",
+          "Predestination - Free Will",
+          "Justice & Mercy in Islam"
+        ]
+      },
+      {
+        "name": "Islamic Practices & Ethics",
+        "subtopics": [
+          "Shahadah - Declaration of Faith",
+          "Salah - Five Daily Prayers",
+          "Sawm - Fasting During Ramadan",
+          "Zakah - Charitable Giving",
+          "Hajj - Pilgrimage to Mecca",
+          "Halal - Permitted Practices",
+          "Haram - Prohibited Practices",
+          "Islamic Law - Sharia",
+          "Festivals - Eid al-Fitr & Eid al-Adha",
+          "Community - Ummah"
+        ]
+      },
+      {
+        "name": "Religion, Peace & Conflict",
+        "subtopics": [
+          "War - Causes & Consequences",
+          "Just War Theory - Conditions",
+          "Pacifism - Non-Violence",
+          "Holy War - Religious Conflict",
+          "Terrorism - Definition & Justification",
+          "Weapons of Mass Destruction - Ethics",
+          "Forgiveness - After Conflict",
+          "Reconciliation - Peace Building",
+          "Religious Persecution - Historical Examples",
+          "Interfaith Dialogue - Understanding"
+        ]
+      },
+      {
+        "name": "Religion, Life & Death",
+        "subtopics": [
+          "Origin of Universe - Religious Views",
+          "Evolution vs Creation - Debate",
+          "Stewardship - Care for Creation",
+          "Environment - Human Responsibility",
+          "Abortion - Religious Perspectives",
+          "Euthanasia - End of Life Ethics",
+          "Suffering - Theodicy Problem",
+          "Death & Mourning - Cultural Practices",
+          "Organ Donation - Ethical Views",
+          "Immortality of Soul - Belief Systems"
+        ]
+      }
+    ]
+  },
+  "business": {
+    "name": "Business Studies",
+    "topics": [
+      {
+        "name": "Business Fundamentals",
+        "subtopics": [
+          "Business Aims & Objectives",
+          "Sole Traders - Advantages & Disadvantages",
+          "Partnerships - Structure",
+          "Limited Companies - Shares",
+          "Business Growth - Organic & Inorganic",
+          "Market Structures - Monopoly to Competition",
+          "Stakeholders - Interests & Conflicts",
+          "Corporate Social Responsibility",
+          "Business Ethics - Decision Making"
+        ]
+      },
+      {
+        "name": "Marketing & Sales",
+        "subtopics": [
+          "Market Segmentation - Target Groups",
+          "Market Research - Primary & Secondary",
+          "The Marketing Mix - 4 Ps",
+          "Pricing Strategies - Cost Plus & Penetration",
+          "Product Lifecycle - Stages",
+          "Branding - Building Brand Image",
+          "Promotion - Advertising & PR",
+          "Distribution Channels - Reaching Customers",
+          "Consumer Behaviour - Purchasing Decisions",
+          "Competitive Advantage - Differentiation"
+        ]
+      },
+      {
+        "name": "Operations Management",
+        "subtopics": [
+          "Production Methods - Job, Batch, Flow",
+          "Capacity Utilisation - Efficiency",
+          "Lean Production - Waste Reduction",
+          "Just-in-Time - Stock Management",
+          "Quality Assurance - Standards",
+          "Supply Chain - Suppliers to Customers",
+          "Technology in Production - Automation",
+          "Location Decisions - Where to Operate",
+          "Stock Control - Levels & Management"
+        ]
+      },
+      {
+        "name": "Finance & Accounts",
+        "subtopics": [
+          "Revenue & Costs - Calculating Profit",
+          "Break-Even Analysis - Point of Recovery",
+          "Cash Flow - Timing of Money",
+          "Balance Sheet - Assets & Liabilities",
+          "Profit & Loss Account - Income Statement",
+          "Budgeting - Planning & Control",
+          "Sources of Finance - Debt vs Equity",
+          "Financial Ratios - Profitability & Liquidity",
+          "Depreciation - Asset Value Over Time",
+          "Working Capital - Operational Efficiency"
+        ]
+      },
+      {
+        "name": "Human Resources",
+        "subtopics": [
+          "Recruitment - Finding Employees",
+          "Selection Process - Choosing Candidates",
+          "Training & Development - Skill Building",
+          "Motivation Theories - Maslow & Herzberg",
+          "Pay Structures - Salary vs Commission",
+          "Performance Management - Appraisals",
+          "Organisational Structure - Hierarchy",
+          "Management Styles - Autocratic to Democratic",
+          "Employee Relations - Morale & Retention",
+          "Health & Safety - Legal Requirements"
+        ]
+      }
+    ]
+  },
+  "dramastudies": {
+    "name": "Drama Studies",
+    "topics": [
+      {
+        "name": "Script Analysis & Performance",
+        "subtopics": [
+          "Script Reading - Understanding Stage Directions",
+          "Character Motivation - Psychological Depth",
+          "Dialogue Analysis - Natural vs Stylised",
+          "Subtext - Hidden Meanings",
+          "Ensemble Work - Group Performance",
+          "Movement & Gesture - Physical Theatre",
+          "Vocal Techniques - Tone & Delivery",
+          "Emotional Range - Expressing Feelings",
+          "Character Development - Arc of Change"
+        ]
+      },
+      {
+        "name": "Practical Drama Techniques",
+        "subtopics": [
+          "Role Play - Exploring Situations",
+          "Improvisation - Spontaneous Creation",
+          "Freeze Frame - Still Moments",
+          "Hot Seating - Character Interrogation",
+          "Monologues - Solo Performance",
+          "Duologues - Two-Character Scenes",
+          "Physical Theatre - Non-Verbal",
+          "Mime - Storytelling Without Words",
+          "Soundscapes - Audio Effects"
+        ]
+      },
+      {
+        "name": "Drama & Theatre Theory",
+        "subtopics": [
+          "Theatre History - Ancient to Modern",
+          "Brecht's Epic Theatre - Alienation",
+          "Stanislavski's Method - Realism",
+          "Theatre of the Absurd - Meaninglessness",
+          "Greek Tragedy - Classical Drama",
+          "Shakespearean Convention - Dramatic Devices",
+          "Contemporary Theatre - New Forms",
+          "Experimental Theatre - Breaking Conventions",
+          "Social Drama - Raising Awareness"
+        ]
+      }
+    ]
+  },
+  "languages": {
+    "name": "Languages (German/Spanish/French)",
+    "topics": [
+      {
+        "name": "Grammar Essentials",
+        "subtopics": [
+          "Nouns & Gender - Articles",
+          "Pronouns - Subject & Object",
+          "Verbs - Regular Present Tense",
+          "Verbs - Irregular Present Tense",
+          "Past Tense - Perfect Forms",
+          "Past Tense - Imperfect Forms",
+          "Future Tense - Will & Going To",
+          "Conditional - Would & If Clauses",
+          "Modal Verbs - Can, Must, Should",
+          "Word Order - Sentence Structure",
+          "Adjectives - Agreement & Position",
+          "Adverbs - Manner & Frequency",
+          "Prepositions - Location & Time",
+          "Negatives - Not, Never, No"
+        ]
+      },
+      {
+        "name": "Vocabulary & Communication",
+        "subtopics": [
+          "Greetings & Introductions",
+          "Family & Relationships",
+          "House & Home",
+          "Food & Eating",
+          "Hobbies & Free Time",
+          "School & Education",
+          "Work & Employment",
+          "Shopping & Money",
+          "Travel & Transport",
+          "Health & Fitness",
+          "Weather & Environment",
+          "Holidays & Tourism",
+          "Social Media & Technology"
+        ]
+      },
+      {
+        "name": "Exam Skills",
+        "subtopics": [
+          "Reading Comprehension - Finding Details",
+          "Listening Strategies - Key Information",
+          "Speaking Preparation - Role Play",
+          "Speaking Exam - Sustained Discussion",
+          "Writing - Formal Letter",
+          "Writing - Email Response",
+          "Writing - Essay Structure",
+          "Translation - English to Target Language",
+          "Translation - Target Language to English",
+          "Time Phrases - Describing When"
+        ]
+      }
+    ]
+  }
+}
