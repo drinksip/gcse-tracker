@@ -21,10 +21,9 @@ input:-webkit-autofill { -webkit-box-shadow: 0 0 0 30px #111827 inset !important
 <body>
 <div id="root"></div>
 
-<!-- Firebase -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, setDoc, addDoc, collection } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
 
   const firebaseConfig = {
@@ -44,7 +43,7 @@ input:-webkit-autofill { -webkit-box-shadow: 0 0 0 30px #111827 inset !important
     async register(username, password) {
       const email = username.trim().toLowerCase() + "@gcsetracker.app";
       const cred = await createUserWithEmailAndPassword(auth, email, password);
-      await setDoc(doc(db, "users", cred.user.uid), { username: username.trim().toLowerCase(), timetable:{}, spec:{}, grades:{} });
+      await setDoc(doc(db, "users", cred.user.uid), { username: username.trim().toLowerCase(), timetable:{}, spec:{}, grades:{}, tests:[], geminiKey:"" });
       return { uid: cred.user.uid, username: username.trim().toLowerCase() };
     },
     async login(username, password) {
@@ -53,19 +52,13 @@ input:-webkit-autofill { -webkit-box-shadow: 0 0 0 30px #111827 inset !important
       const snap = await getDoc(doc(db, "users", cred.user.uid));
       return { uid: cred.user.uid, username: username.trim().toLowerCase(), data: snap.exists() ? snap.data() : {} };
     },
-    async logout() {
-      await signOut(auth);
+    async logout() { await signOut(auth); },
+    async saveData(uid, data) { await setDoc(doc(db, "users", uid), data, { merge: true }); },
+    async loadDoc(uid) { const snap = await getDoc(doc(db, "users", uid)); return snap.exists() ? snap.data() : null; },
+    async sendSpecRequest(username, subjectId, subjectName, examBoard) {
+      await addDoc(collection(db, "spec_requests"), { username, subjectId, subjectName, examBoard, timestamp: new Date().toISOString() });
     },
-    async saveData(uid, data) {
-      await setDoc(doc(db, "users", uid), data, { merge: true });
-    },
-    async loadDoc(uid) {
-      const snap = await getDoc(doc(db, "users", uid));
-      return snap.exists() ? snap.data() : null;
-    },
-    onAuthChange(cb) {
-      return onAuthStateChanged(auth, cb);
-    }
+    onAuthChange(cb) { return onAuthStateChanged(auth, cb); }
   };
 
   window.dispatchEvent(new Event("firebaseReady"));
@@ -74,6 +67,7 @@ input:-webkit-autofill { -webkit-box-shadow: 0 0 0 30px #111827 inset !important
 <script type="text/babel">
 const { useState, useCallback, useEffect, useRef } = React;
 
+// ─── SUBJECT DATA ─────────────────────────────────────────────────────────────
 const SUBJECTS = [
   { id:"maths", name:"Maths", board:"Edexcel", color:"#4ade80", emoji:"📐", topics:[
     { id:"m1", name:"Number", subtopics:["Types of number & BIDMAS","Fractions, decimals & percentages","Powers, roots & surds","Standard form","Bounds & error intervals","Ratio & proportion"] },
@@ -156,15 +150,22 @@ const SUBJECTS = [
     { id:"cs8", name:"Programming", subtopics:["Variables, constants & data types","Input/output","Arithmetic & logical operators","Selection (if/elif/else)","Iteration (for, while loops)","String manipulation","List/array operations","Subroutines (functions & procedures)","File handling (read/write)","Exception handling","Structured programming"] },
     { id:"cs9", name:"Databases & SQL", subtopics:["Database concepts & flat file vs relational","Primary & foreign keys","Entity relationship diagrams","SQL: SELECT, WHERE, ORDER BY, INSERT, UPDATE","Normalisation (1NF, 2NF, 3NF intro)"] },
   ]},
+  { id:"music", name:"Music", board:"Edexcel", color:"#fbbf24", emoji:"🎵", topics:[
+    { id:"mu1", name:"Areas of Study 1: Instrumental Music", subtopics:["Baroque concerto grosso","Classical symphony & sonata form","Romantic piano music","20th century orchestral music","Set work: Concerto Grosso Op.6 No.8 (Corelli)","Set work: Symphony No.40 (Mozart)"] },
+    { id:"mu2", name:"Areas of Study 2: Vocal Music", subtopics:["Music for voice (solo & ensemble)","Opera & oratorio","Art song & music theatre","Set work: Defying Gravity (Wicked)","Set work: Mozarts Die Zauberflote","Vocal techniques & texture"] },
+    { id:"mu3", name:"Areas of Study 3: Music for Stage & Screen", subtopics:["Film music techniques","Music theatre development","Set work: Star Wars (John Williams)","Set work: Hedwig's Theme (John Williams)","Leitmotif & underscore","Music & narrative"] },
+    { id:"mu4", name:"Areas of Study 4: Fusions", subtopics:["Blues & jazz origins","Fusion genres (jazz-funk, Afrobeat etc.)","Set work: All Blues (Miles Davis)","Set work: Grace (Jeff Buckley)","Cross-cultural influences","Electric & electronic instruments"] },
+    { id:"mu5", name:"Musical Elements & Notation", subtopics:["Melody, rhythm & metre","Harmony & tonality","Texture & structure","Timbre & dynamics","Reading & writing staff notation","Identifying musical devices"] },
+    { id:"mu6", name:"Listening & Appraising", subtopics:["Unfamiliar piece analysis","Comparing pieces","Using musical vocabulary","Identifying instruments","Describing context & style","Exam technique & past papers"] },
+  ]},
 ];
 
-// Extra subjects for timetable only (no spec tracker)
 const EXTRA_SUBJECTS = [
   { id:"art",      name:"Art",           color:"#f472b6", emoji:"🎨" },
-  { id:"photo",    name:"Photography",   color:"#e879f9", emoji:"📷" },
+  { id:"photo",    name:"Photography",   color:"#c084fc", emoji:"📷" },
   { id:"business", name:"Business",      color:"#38bdf8", emoji:"💼" },
   { id:"dance",    name:"Dance",         color:"#fb7185", emoji:"💃" },
-  { id:"drama",    name:"Drama",         color:"#c084fc", emoji:"🎭" },
+  { id:"drama",    name:"Drama",         color:"#818cf8", emoji:"🎭" },
   { id:"pd",       name:"Product Design",color:"#94a3b8", emoji:"🔧" },
   { id:"textiles", name:"Textiles",      color:"#f9a8d4", emoji:"🧵" },
   { id:"food",     name:"Food",          color:"#fdba74", emoji:"🍳" },
@@ -172,7 +173,6 @@ const EXTRA_SUBJECTS = [
   { id:"media",    name:"Media Studies", color:"#67e8f9", emoji:"🎬" },
   { id:"pe",       name:"PE Studies",    color:"#4ade80", emoji:"⚽" },
   { id:"french",   name:"French",        color:"#60a5fa", emoji:"🇫🇷" },
-  { id:"music",    name:"Music",         color:"#fbbf24", emoji:"🎵" },
   { id:"spanish",  name:"Spanish",       color:"#fb923c", emoji:"🇪🇸" },
 ];
 const ALL_SUBJECTS = [...SUBJECTS, ...EXTRA_SUBJECTS];
@@ -189,7 +189,6 @@ const S={
   header:{background:"linear-gradient(180deg,#0d1526 0%,#0a0f1e 100%)",borderBottom:"1px solid #1e293b",padding:"18px 24px 0",position:"sticky",top:0,zIndex:10},
   headerInner:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:14,marginBottom:16},
   title:{fontSize:20,fontWeight:700,color:"#f1f5f9",letterSpacing:-0.5},
-  subtitle:{fontSize:11,color:"#475569",letterSpacing:2,textTransform:"uppercase"},
   tabBar:{display:"flex",gap:4},
   tabBtn:{background:"transparent",border:"none",color:"#475569",padding:"10px 18px",cursor:"pointer",fontSize:13,fontFamily:"inherit",borderBottom:"2px solid transparent",transition:"all 0.15s"},
   tabActive:{color:"#f1f5f9",borderBottomColor:"#60a5fa"},
@@ -215,6 +214,9 @@ const S={
   specSel:{background:"#111827",border:"1px solid #1e293b",borderRadius:5,color:"#94a3b8",padding:"4px 6px",fontSize:11,fontFamily:"inherit",cursor:"pointer"},
   specDate:{background:"#111827",border:"1px solid #1e293b",borderRadius:5,color:"#64748b",padding:"4px 6px",fontSize:11,fontFamily:"inherit",colorScheme:"dark"},
   input:{background:"#111827",border:"1px solid #1e293b",borderRadius:8,color:"#e2e8f0",padding:"10px 14px",fontSize:14,fontFamily:"inherit",width:"100%",outline:"none"},
+  btn:{background:"#1e293b",border:"1px solid #334155",borderRadius:7,color:"#94a3b8",padding:"6px 14px",cursor:"pointer",fontSize:12,fontFamily:"inherit"},
+  btnBlue:{background:"#1d4ed8",border:"none",borderRadius:8,color:"white",padding:"10px 18px",fontSize:13,fontWeight:700,fontFamily:"inherit",cursor:"pointer"},
+  btnGreen:{background:"rgba(74,222,128,0.15)",border:"1px solid rgba(74,222,128,0.3)",borderRadius:7,color:"#4ade80",padding:"6px 14px",cursor:"pointer",fontSize:12,fontFamily:"inherit"},
 };
 
 function MiniProgress({prog}){
@@ -222,7 +224,7 @@ function MiniProgress({prog}){
   return <div style={{width:60,height:6,background:"#1e293b",borderRadius:3,overflow:"hidden",display:"flex"}}><div style={{width:`${g}%`,background:"#4ade80",height:"100%"}}/><div style={{width:`${a}%`,background:"#fbbf24",height:"100%"}}/></div>;
 }
 
-// ─── LOGIN SCREEN ─────────────────────────────────────────────────────────────
+// ─── LOGIN ────────────────────────────────────────────────────────────────────
 function LoginScreen({onLogin}){
   const [username,setUsername]=useState("");
   const [password,setPassword]=useState("");
@@ -252,16 +254,9 @@ function LoginScreen({onLogin}){
     if(!fbReady){setError("Still connecting, please wait...");return;}
     setLoading(true);setError("");
     try{
-      if(isRegister){
-        const res=await window.__firebase.register(username,password);
-        onLogin(res.uid,res.username,{});
-      } else {
-        const res=await window.__firebase.login(username,password);
-        onLogin(res.uid,res.username,res.data);
-      }
-    } catch(e){
-      setError(friendly(e.code));
-    }
+      if(isRegister){const res=await window.__firebase.register(username,password);onLogin(res.uid,res.username,{});}
+      else{const res=await window.__firebase.login(username,password);onLogin(res.uid,res.username,res.data);}
+    }catch(e){setError(friendly(e.code));}
     setLoading(false);
   };
 
@@ -275,45 +270,137 @@ function LoginScreen({onLogin}){
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
         <div>
           <div style={{fontSize:11,color:"#64748b",marginBottom:5,fontFamily:"monospace",textTransform:"uppercase",letterSpacing:1}}>Username</div>
-          <input value={username} onChange={e=>setUsername(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle(false)}
-            placeholder="e.g. sid123" style={S.input} autoComplete="username"/>
+          <input value={username} onChange={e=>setUsername(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle(false)} placeholder="e.g. sid123" style={S.input} autoComplete="username"/>
         </div>
         <div>
           <div style={{fontSize:11,color:"#64748b",marginBottom:5,fontFamily:"monospace",textTransform:"uppercase",letterSpacing:1}}>Password</div>
-          <input type="password" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle(false)}
-            placeholder="at least 6 characters" style={S.input} autoComplete="current-password"/>
+          <input type="password" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle(false)} placeholder="at least 6 characters" style={S.input} autoComplete="current-password"/>
         </div>
         {error&&<div style={{fontSize:12,color:"#f87171",background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:7,padding:"8px 12px",fontFamily:"monospace"}}>{error}</div>}
-        <button onClick={()=>handle(false)} disabled={loading} style={{background:"#1d4ed8",border:"none",borderRadius:8,color:"white",padding:"11px",fontSize:14,fontWeight:700,fontFamily:"inherit",cursor:"pointer",marginTop:4,opacity:loading?0.6:1}}>
-          {loading?"Loading...":"Log In"}
-        </button>
-        <button onClick={()=>handle(true)} disabled={loading} style={{background:"transparent",border:"1px solid #334155",borderRadius:8,color:"#94a3b8",padding:"11px",fontSize:14,fontFamily:"inherit",cursor:"pointer",opacity:loading?0.6:1}}>
-          Register new account
-        </button>
+        <button onClick={()=>handle(false)} disabled={loading} style={{...S.btnBlue,opacity:loading?0.6:1,marginTop:4}}>{loading?"Loading...":"Log In"}</button>
+        <button onClick={()=>handle(true)} disabled={loading} style={{background:"transparent",border:"1px solid #334155",borderRadius:8,color:"#94a3b8",padding:"11px",fontSize:14,fontFamily:"inherit",cursor:"pointer",opacity:loading?0.6:1}}>Register new account</button>
       </div>
-      <div style={{fontSize:10,color:"#334155",textAlign:"center",marginTop:20,fontFamily:"monospace",lineHeight:1.6}}>
-        Passwords are encrypted by Google · Choose any username
+      <div style={{fontSize:10,color:"#334155",textAlign:"center",marginTop:20,fontFamily:"monospace",lineHeight:1.6}}>Passwords are encrypted by Google · Choose any username</div>
+    </div>
+  </div>;
+}
+
+// ─── SETTINGS PANEL ───────────────────────────────────────────────────────────
+function Settings({geminiKey,setGeminiKey,onSave,onClose}){
+  const [key,setKey]=useState(geminiKey||"");
+  const [saved,setSaved]=useState(false);
+  const save=()=>{setGeminiKey(key);onSave(key);setSaved(true);setTimeout(()=>setSaved(false),2000);};
+  return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}>
+    <div style={{background:"#0d1526",border:"1px solid #1e293b",borderRadius:16,padding:"32px",width:"100%",maxWidth:480}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+        <div style={{fontSize:16,fontWeight:700,color:"#f1f5f9"}}>⚙️ Settings</div>
+        <button onClick={onClose} style={{...S.btn,padding:"4px 10px"}}>✕ Close</button>
+      </div>
+      <div style={{marginBottom:24}}>
+        <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1",marginBottom:8}}>🤖 AI Features (Gemini)</div>
+        <div style={{fontSize:12,color:"#475569",marginBottom:12,lineHeight:1.6}}>
+          To unlock AI features (timetable optimiser, study coach, smart advice), add your free Gemini API key.<br/>
+          Get one free at <span style={{color:"#60a5fa"}}>aistudio.google.com</span> → Get API key (takes 2 mins, no card needed).
+        </div>
+        <input value={key} onChange={e=>setKey(e.target.value)} placeholder="AIza..." style={{...S.input,fontSize:12,marginBottom:8}}/>
+        <button onClick={save} style={{...S.btnBlue,fontSize:12,padding:"8px 16px"}}>{saved?"✓ Saved!":"Save API Key"}</button>
+        {key&&<span style={{fontSize:11,color:"#4ade80",marginLeft:10}}>✓ AI features active</span>}
       </div>
     </div>
   </div>;
 }
 
 // ─── TIMETABLE ────────────────────────────────────────────────────────────────
-function Timetable({timetable,setTimetable}){
-  const [showSel,setShowSel]=useState(true);
+function Timetable({timetable,setTimetable,tests,setTests,geminiKey,getProgress,subtopicData}){
+  const [showSel,setShowSel]=useState(false);
+  const [showAI,setShowAI]=useState(false);
+  const [aiLoading,setAiLoading]=useState(false);
+  const [aiResult,setAiResult]=useState("");
+  const [aiQ,setAiQ]=useState({hours:"2",priority:"",goal:""});
+  const [newTest,setNewTest]=useState({subject:"",date:"",type:"Class test"});
+  const [showAddTest,setShowAddTest]=useState(false);
+
   const setSlot=(day,slot,vals)=>setTimetable(p=>({...p,[`${day}__${slot}`]:vals}));
   const getSlot=(day,slot)=>{const v=timetable[`${day}__${slot}`];if(!v)return[];if(Array.isArray(v))return v;return v?[v]:[];};
   const counts={};
   Object.values(timetable).forEach(v=>{const arr=Array.isArray(v)?v:(v?[v]:[]);arr.forEach(id=>{if(id)counts[id]=(counts[id]||0)+1;});});
+
+  const assignedSubjectIds=[...new Set(Object.values(counts).length>0?Object.keys(counts):[])];
+
+  // Sort upcoming tests
+  const today=new Date();today.setHours(0,0,0,0);
+  const upcomingTests=(tests||[]).filter(t=>new Date(t.date)>=today).sort((a,b)=>new Date(a.date)-new Date(b.date));
+
+  const daysUntil=(dateStr)=>{
+    const d=new Date(dateStr);d.setHours(0,0,0,0);
+    return Math.round((d-today)/(1000*60*60*24));
+  };
+
+  const addTest=()=>{
+    if(!newTest.subject||!newTest.date)return;
+    setTests(p=>[...(p||[]),{...newTest,id:Date.now().toString()}]);
+    setNewTest({subject:"",date:"",type:"Class test"});
+    setShowAddTest(false);
+  };
+  const removeTest=(id)=>setTests(p=>(p||[]).filter(t=>t.id!==id));
+
+  const runAI=async()=>{
+    if(!geminiKey){setAiResult("No Gemini API key set. Go to ⚙️ Settings to add one.");return;}
+    setAiLoading(true);setAiResult("");
+    const ragSummary=assignedSubjectIds.map(id=>{
+      const s=ALL_SUBJECTS.find(x=>x.id===id);
+      const subjectWithSpec=SUBJECTS.find(x=>x.id===id);
+      if(!subjectWithSpec)return`${s?.name||id}: no spec data`;
+      let total=0,green=0,amber=0,red=0;
+      subjectWithSpec.topics.forEach(t=>t.subtopics.forEach((_,i)=>{
+        total++;
+        const key=`${id}__${t.id}__${i}`;
+        const v=subtopicData[key]||{rag:"Red"};
+        if(v.rag==="Green")green++;else if(v.rag==="Amber")amber++;else red++;
+      }));
+      return`${s?.name||id}: ${green}/${total} green, ${amber} amber, ${red} red`;
+    }).join("\n");
+
+    const testsList=upcomingTests.map(t=>`${t.subject} - ${t.type} in ${daysUntil(t.date)} days`).join("\n")||"No upcoming tests";
+    const prompt=`You are a helpful GCSE revision assistant. A student wants help optimising their weekly revision timetable.
+
+Their current spec coverage (RAG status):
+${ragSummary}
+
+Upcoming tests:
+${testsList}
+
+Student info:
+- Available study hours per day: ${aiQ.hours}
+- Priority concern: ${aiQ.priority||"none specified"}
+- Main goal this week: ${aiQ.goal||"general revision"}
+
+Days available: Mon-Sat (Sunday is a rest day)
+Sessions per day: Daily habit (short), Evening 1, Evening 2
+
+Please suggest an optimised weekly timetable for this student. For each day list which subject(s) to study in each session and briefly explain why. Keep it practical and encouraging. Format it clearly with each day on a new line.`;
+
+    try{
+      const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})
+      });
+      const data=await res.json();
+      if(data.error){setAiResult("Error: "+data.error.message);}
+      else{setAiResult(data.candidates?.[0]?.content?.parts?.[0]?.text||"No response received.");}
+    }catch(e){setAiResult("Failed to connect to Gemini. Check your API key.");}
+    setAiLoading(false);
+  };
+
   return <div>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
       <div style={S.sectionHeader}>Weekly Study Planner</div>
-      <button onClick={()=>setShowSel(p=>!p)} style={{background:"#1e293b",border:"1px solid #334155",borderRadius:7,color:"#94a3b8",padding:"5px 14px",cursor:"pointer",fontSize:12,fontFamily:"inherit"}}>
-        {showSel?"🙈 Hide selectors":"✏️ Edit timetable"}
-      </button>
+      <button onClick={()=>setShowSel(p=>!p)} style={S.btn}>{showSel?"🙈 Hide selectors":"✏️ Edit timetable"}</button>
     </div>
-    <p style={S.sectionSub}>Mon-Sat · Hold Ctrl (or Cmd on Mac) to select multiple subjects per cell.</p>
-    <div style={{marginBottom:16}}>
+    <p style={{color:"#475569",fontSize:12,marginBottom:16,marginTop:4}}>Mon-Sat · Hold Ctrl (or Cmd on Mac) to select multiple subjects per cell.</p>
+
+    {/* Timetable grid */}
+    <div style={{marginBottom:20}}>
       <table style={S.table}><thead><tr>
         <th style={S.th}>Day</th>
         {SLOTS.map(slot=><th key={slot} style={S.th}>{slot}</th>)}
@@ -337,73 +424,263 @@ function Timetable({timetable,setTimetable}){
         </tr>)}
       </tbody></table>
     </div>
-    <div style={S.card}>
-      <div style={S.cardTitle}>This week's focus</div>
+
+    {/* Weekly focus */}
+    <div style={{...S.card,marginBottom:20}}>
+      <div style={S.cardTitle}>Current Focus</div>
       <div style={{display:"flex",flexWrap:"wrap",gap:8,marginTop:12}}>
         {ALL_SUBJECTS.filter(s=>(counts[s.id]||0)>0).map(s=>{const c=counts[s.id];return <div key={s.id} style={{display:"flex",alignItems:"center",gap:6,background:s.color+"15",border:`1px solid ${s.color}40`,borderRadius:8,padding:"4px 10px"}}>
           <span>{s.emoji}</span><span style={{color:"#e2e8f0",fontSize:13}}>{s.name}</span><span style={{color:s.color,fontWeight:700,fontSize:13}}>{c}x</span>
         </div>;})}
-        {Object.keys(counts).length===0&&<span style={{color:"#334155",fontSize:12}}>No subjects assigned yet — fill in the timetable above.</span>}
+        {Object.keys(counts).length===0&&<span style={{color:"#334155",fontSize:12}}>No subjects assigned yet.</span>}
+      </div>
+    </div>
+
+    {/* Upcoming tests */}
+    <div style={{...S.card,marginBottom:20}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <div style={S.cardTitle}>Upcoming Tests & Exams</div>
+        <button onClick={()=>setShowAddTest(p=>!p)} style={S.btn}>＋ Add test</button>
+      </div>
+      {showAddTest&&<div style={{background:"#0a0f1e",borderRadius:8,padding:12,marginBottom:12,display:"flex",gap:8,flexWrap:"wrap",alignItems:"flex-end"}}>
+        <div style={{flex:2,minWidth:120}}>
+          <div style={{fontSize:10,color:"#475569",marginBottom:4,textTransform:"uppercase",letterSpacing:1}}>Subject</div>
+          <select value={newTest.subject} onChange={e=>setNewTest(p=>({...p,subject:e.target.value}))} style={{...S.sel,height:"auto"}}>
+            <option value="">Pick subject</option>
+            {ALL_SUBJECTS.filter(s=>assignedSubjectIds.includes(s.id)||SUBJECTS.find(x=>x.id===s.id)).map(s=><option key={s.id} value={s.name}>{s.emoji} {s.name}</option>)}
+          </select>
+        </div>
+        <div style={{flex:2,minWidth:120}}>
+          <div style={{fontSize:10,color:"#475569",marginBottom:4,textTransform:"uppercase",letterSpacing:1}}>Type</div>
+          <select value={newTest.type} onChange={e=>setNewTest(p=>({...p,type:e.target.value}))} style={{...S.sel,height:"auto"}}>
+            {["Class test","Mock exam","Full exam","Assessment","Other"].map(t=><option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+        <div style={{flex:2,minWidth:120}}>
+          <div style={{fontSize:10,color:"#475569",marginBottom:4,textTransform:"uppercase",letterSpacing:1}}>Date</div>
+          <input type="date" value={newTest.date} onChange={e=>setNewTest(p=>({...p,date:e.target.value}))} style={{...S.specDate,width:"100%",padding:"7px 8px",fontSize:12}}/>
+        </div>
+        <button onClick={addTest} style={{...S.btnBlue,padding:"8px 14px",fontSize:12,flexShrink:0}}>Add</button>
+      </div>}
+      {upcomingTests.length===0&&!showAddTest&&<div style={{color:"#334155",fontSize:12}}>No upcoming tests added yet.</div>}
+      <div style={{display:"grid",gap:8}}>
+        {upcomingTests.map(t=>{
+          const days=daysUntil(t.date);
+          const urgency=days<=3?"#f87171":days<=7?"#fbbf24":"#4ade80";
+          const subj=ALL_SUBJECTS.find(s=>s.name===t.subject);
+          return <div key={t.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0b1120",borderRadius:8,padding:"10px 14px",border:`1px solid ${urgency}33`}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:18}}>{subj?.emoji||"📝"}</span>
+              <div>
+                <div style={{color:"#f1f5f9",fontSize:13,fontWeight:600}}>{t.subject} — {t.type}</div>
+                <div style={{color:"#475569",fontSize:11}}>{new Date(t.date).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",year:"numeric"})}</div>
+              </div>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:12,fontWeight:700,color:urgency}}>{days===0?"Today!":days===1?"Tomorrow":`${days} days`}</span>
+              <button onClick={()=>removeTest(t.id)} style={{...S.btn,padding:"3px 8px",fontSize:11,color:"#475569"}}>✕</button>
+            </div>
+          </div>;
+        })}
+      </div>
+    </div>
+
+    {/* AI Timetable Optimiser */}
+    <div style={S.card}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:showAI?16:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:16}}>🤖</span>
+          <div style={S.cardTitle}>AI Timetable Optimiser</div>
+          {!geminiKey&&<span style={{fontSize:10,color:"#475569",background:"#1e293b",borderRadius:4,padding:"2px 6px"}}>Needs API key</span>}
+        </div>
+        <button onClick={()=>setShowAI(p=>!p)} style={S.btn}>{showAI?"Hide":"Optimise my timetable ✨"}</button>
+      </div>
+      {showAI&&<div>
+        <div style={{display:"grid",gap:12,marginBottom:16}}>
+          <div>
+            <div style={{fontSize:11,color:"#64748b",marginBottom:5,textTransform:"uppercase",letterSpacing:1}}>Hours available per day</div>
+            <select value={aiQ.hours} onChange={e=>setAiQ(p=>({...p,hours:e.target.value}))} style={{...S.sel,height:"auto",width:"auto"}}>
+              {["1","1.5","2","2.5","3","3.5","4"].map(h=><option key={h} value={h}>{h} hours</option>)}
+            </select>
+          </div>
+          <div>
+            <div style={{fontSize:11,color:"#64748b",marginBottom:5,textTransform:"uppercase",letterSpacing:1}}>Priority concern (optional)</div>
+            <input value={aiQ.priority} onChange={e=>setAiQ(p=>({...p,priority:e.target.value}))} placeholder="e.g. Chemistry test next week, behind on English..." style={{...S.input,fontSize:12}}/>
+          </div>
+          <div>
+            <div style={{fontSize:11,color:"#64748b",marginBottom:5,textTransform:"uppercase",letterSpacing:1}}>Goal this week (optional)</div>
+            <input value={aiQ.goal} onChange={e=>setAiQ(p=>({...p,goal:e.target.value}))} placeholder="e.g. Finish Biology topics, start past papers for Maths..." style={{...S.input,fontSize:12}}/>
+          </div>
+        </div>
+        <button onClick={runAI} disabled={aiLoading} style={{...S.btnBlue,opacity:aiLoading?0.6:1,marginBottom:aiResult?16:0}}>
+          {aiLoading?"🤖 Thinking...":"✨ Generate optimised timetable"}
+        </button>
+        {aiResult&&<div style={{background:"#0b1120",border:"1px solid #1e293b",borderRadius:8,padding:16,fontSize:12,color:"#cbd5e1",lineHeight:1.8,whiteSpace:"pre-wrap",marginTop:12}}>{aiResult}</div>}
+      </div>}
+    </div>
+  </div>;
+}
+
+// ─── AI STUDY COACH ───────────────────────────────────────────────────────────
+function AICoach({geminiKey,timetable,subtopicData,grades,tests}){
+  const [messages,setMessages]=useState([{role:"assistant",text:"Hi! I'm your AI study coach. Ask me anything — which topics to focus on, how to tackle a subject, exam tips, or anything else revision-related. I can see your RAG data and upcoming tests to give you personalised advice."}]);
+  const [input,setInput]=useState("");
+  const [loading,setLoading]=useState(false);
+  const endRef=useRef(null);
+
+  useEffect(()=>endRef.current?.scrollIntoView({behavior:"smooth"}),[messages]);
+
+  const buildContext=()=>{
+    const ragSummary=SUBJECTS.map(s=>{
+      let total=0,green=0,amber=0,red=0;
+      s.topics.forEach(t=>t.subtopics.forEach((_,i)=>{
+        total++;const v=subtopicData[`${s.id}__${t.id}__${i}`]||{rag:"Red"};
+        if(v.rag==="Green")green++;else if(v.rag==="Amber")amber++;else red++;
+      }));
+      return`${s.name} (${s.board}): ${green}/${total} green, ${amber} amber, ${red} red`;
+    }).join("\n");
+    const today=new Date();today.setHours(0,0,0,0);
+    const testsList=(tests||[]).filter(t=>new Date(t.date)>=today).sort((a,b)=>new Date(a.date)-new Date(b.date))
+      .map(t=>{const days=Math.round((new Date(t.date)-today)/(1000*60*60*24));return`${t.subject} ${t.type} in ${days} days`;}).join(", ")||"none";
+    return`Student spec coverage:\n${ragSummary}\n\nUpcoming tests: ${testsList}`;
+  };
+
+  const send=async()=>{
+    if(!input.trim())return;
+    if(!geminiKey){setMessages(p=>[...p,{role:"user",text:input},{role:"assistant",text:"No Gemini API key set. Go to ⚙️ Settings to add one."}]);setInput("");return;}
+    const userMsg=input.trim();
+    setMessages(p=>[...p,{role:"user",text:userMsg}]);
+    setInput("");setLoading(true);
+    const history=messages.map(m=>`${m.role==="user"?"Student":"Coach"}: ${m.text}`).join("\n");
+    const prompt=`You are a friendly, encouraging GCSE revision coach. Keep responses concise and practical.
+
+${buildContext()}
+
+Conversation so far:
+${history}
+Student: ${userMsg}
+Coach:`;
+    try{
+      const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})
+      });
+      const data=await res.json();
+      const reply=data.candidates?.[0]?.content?.parts?.[0]?.text||"Sorry, I couldn't get a response.";
+      setMessages(p=>[...p,{role:"assistant",text:reply}]);
+    }catch(e){setMessages(p=>[...p,{role:"assistant",text:"Failed to connect to Gemini. Check your API key."}]);}
+    setLoading(false);
+  };
+
+  return <div>
+    <div style={S.sectionHeader}>🤖 AI Study Coach</div>
+    <p style={{color:"#475569",fontSize:12,marginBottom:16,marginTop:4}}>Ask me anything about your revision. I can see your RAG data and upcoming tests.{!geminiKey&&<span style={{color:"#f87171"}}> (Add a Gemini API key in ⚙️ Settings to use this)</span>}</p>
+    <div style={{background:"#0d1526",border:"1px solid #1e293b",borderRadius:10,display:"flex",flexDirection:"column",height:480}}>
+      <div style={{flex:1,overflowY:"auto",padding:16,display:"flex",flexDirection:"column",gap:12}}>
+        {messages.map((m,i)=><div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
+          <div style={{maxWidth:"80%",background:m.role==="user"?"#1d4ed8":"#111827",borderRadius:10,padding:"10px 14px",fontSize:13,color:"#e2e8f0",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{m.text}</div>
+        </div>)}
+        {loading&&<div style={{display:"flex",justifyContent:"flex-start"}}><div style={{background:"#111827",borderRadius:10,padding:"10px 14px",fontSize:13,color:"#475569"}}>Thinking...</div></div>}
+        <div ref={endRef}/>
+      </div>
+      <div style={{borderTop:"1px solid #1e293b",padding:12,display:"flex",gap:8}}>
+        <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&!loading&&send()}
+          placeholder="Ask anything about your revision..." style={{...S.input,fontSize:12,flex:1}}/>
+        <button onClick={send} disabled={loading||!input.trim()} style={{...S.btnBlue,padding:"8px 16px",opacity:(loading||!input.trim())?0.5:1}}>Send</button>
       </div>
     </div>
   </div>;
 }
 
 // ─── GRADES ───────────────────────────────────────────────────────────────────
-function Grades({grades,setGrades,getProgress}){
+function Grades({grades,setGrades,getProgress,assignedSubjectIds}){
   const setGrade=(id,field,val)=>setGrades(p=>({...p,[id]:{...(p[id]||{}),[field]:val}}));
   const getGrade=id=>grades[id]||{target:"",mock:"",predicted:"",notes:""};
+
+  const visibleSubjects=ALL_SUBJECTS.filter(s=>assignedSubjectIds.includes(s.id));
+  const subjectsWithSpec=visibleSubjects.filter(s=>SUBJECTS.find(x=>x.id===s.id));
+  const subjectsWithoutSpec=visibleSubjects.filter(s=>!SUBJECTS.find(x=>x.id===s.id));
+
+  const GradeCard=({s,showProgress})=>{
+    const g=getGrade(s.id);
+    const prog=showProgress?getProgress(s.id):null;
+    const gPct=prog?Math.round((prog.green/prog.total)*100):0;
+    const aPct=prog?Math.round((prog.amber/prog.total)*100):0;
+    return <div style={{...S.card,borderLeft:`3px solid ${s.color}`}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:22}}>{s.emoji}</span>
+          <div>
+            <div style={{fontWeight:700,color:"#f1f5f9",fontSize:15}}>{s.name}</div>
+            <div style={{color:"#64748b",fontSize:12}}>{s.board||"—"}</div>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+          {["target","mock","predicted"].map(field=><div key={field} style={{textAlign:"center"}}>
+            <div style={{color:"#64748b",fontSize:11,marginBottom:3,textTransform:"uppercase",letterSpacing:1}}>{field}</div>
+            <select value={g[field]} onChange={e=>setGrade(s.id,field,e.target.value)} style={{...S.gradeSel,color:s.color}}>
+              <option value="">-</option>
+              {["U","1","2","3","4","5","6","7","8","9"].map(n=><option key={n} value={n}>{n}</option>)}
+            </select>
+          </div>)}
+        </div>
+      </div>
+      {showProgress&&prog&&<div style={{marginTop:14}}>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
+          <span style={{color:"#94a3b8",fontSize:12}}>Spec coverage (RAG)</span>
+          <span style={{color:"#94a3b8",fontSize:12}}>{prog.green}/{prog.total} green</span>
+        </div>
+        <div style={S.progressTrack}>
+          <div style={{...S.progressBar,width:`${gPct}%`,background:"#4ade80"}}/>
+          <div style={{...S.progressBar,width:`${aPct}%`,background:"#fbbf24",left:`${gPct}%`}}/>
+        </div>
+        <div style={{display:"flex",gap:12,marginTop:5}}>
+          {[["🟢",prog.green,"#4ade80"],["🟡",prog.amber,"#fbbf24"],["🔴",prog.red,"#f87171"]].map(([icon,n,c])=><span key={icon} style={{fontSize:11,color:c}}>{icon} {n}</span>)}
+        </div>
+      </div>}
+      <textarea placeholder="Notes..." value={g.notes} onChange={e=>setGrade(s.id,"notes",e.target.value)} style={S.notesArea} rows={2}/>
+    </div>;
+  };
+
   return <div>
     <div style={S.sectionHeader}>Grade Tracker</div>
-    <p style={S.sectionSub}>Set your target, log mock results and predicted grades.</p>
-    <div style={{display:"grid",gap:16}}>
-      {SUBJECTS.map(s=>{
-        const g=getGrade(s.id);const prog=getProgress(s.id);
-        const gPct=Math.round((prog.green/prog.total)*100);const aPct=Math.round((prog.amber/prog.total)*100);
-        return <div key={s.id} style={{...S.card,borderLeft:`3px solid ${s.color}`}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-            <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <span style={{fontSize:22}}>{s.emoji}</span>
-              <div><div style={{fontWeight:700,color:"#f1f5f9",fontSize:15}}>{s.name}</div><div style={{color:"#64748b",fontSize:12}}>{s.board}</div></div>
-            </div>
-            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-              {["target","mock","predicted"].map(field=><div key={field} style={{textAlign:"center"}}>
-                <div style={{color:"#64748b",fontSize:11,marginBottom:3,textTransform:"uppercase",letterSpacing:1}}>{field}</div>
-                <select value={g[field]} onChange={e=>setGrade(s.id,field,e.target.value)} style={{...S.gradeSel,color:s.color}}>
-                  <option value="">-</option>
-                  {["U","1","2","3","4","5","6","7","8","9"].map(n=><option key={n} value={n}>{n}</option>)}
-                </select>
-              </div>)}
-            </div>
-          </div>
-          <div style={{marginTop:14}}>
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
-              <span style={{color:"#94a3b8",fontSize:12}}>Spec coverage (RAG)</span>
-              <span style={{color:"#94a3b8",fontSize:12}}>{prog.green}/{prog.total} green</span>
-            </div>
-            <div style={S.progressTrack}>
-              <div style={{...S.progressBar,width:`${gPct}%`,background:"#4ade80"}}/>
-              <div style={{...S.progressBar,width:`${aPct}%`,background:"#fbbf24",left:`${gPct}%`}}/>
-            </div>
-            <div style={{display:"flex",gap:12,marginTop:5}}>
-              {[["🟢",prog.green,"#4ade80"],["🟡",prog.amber,"#fbbf24"],["🔴",prog.red,"#f87171"]].map(([icon,n,c])=><span key={icon} style={{fontSize:11,color:c}}>{icon} {n}</span>)}
-            </div>
-          </div>
-          <textarea placeholder="Notes..." value={g.notes} onChange={e=>setGrade(s.id,"notes",e.target.value)} style={S.notesArea} rows={2}/>
-        </div>;
-      })}
-    </div>
+    <p style={{color:"#475569",fontSize:12,marginBottom:20,marginTop:4}}>Only subjects assigned in your timetable appear here.</p>
+    {visibleSubjects.length===0&&<div style={{...S.card,color:"#475569",fontSize:13}}>No subjects assigned yet — go to the Timetable tab and add subjects to your sessions.</div>}
+    {subjectsWithSpec.length>0&&<div style={{display:"grid",gap:16,marginBottom:16}}>
+      {subjectsWithSpec.map(s=><GradeCard key={s.id} s={s} showProgress={true}/>)}
+    </div>}
+    {subjectsWithoutSpec.length>0&&<div>
+      <div style={{fontSize:12,color:"#475569",marginBottom:12,fontWeight:600,textTransform:"uppercase",letterSpacing:1}}>Subjects without spec data</div>
+      <div style={{display:"grid",gap:16}}>
+        {subjectsWithoutSpec.map(s=><GradeCard key={s.id} s={s} showProgress={false}/>)}
+      </div>
+    </div>}
   </div>;
 }
 
 // ─── SPEC TRACKER ─────────────────────────────────────────────────────────────
-function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getProgress}){
+function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getProgress,assignedSubjectIds,user}){
   const toggleTopic=id=>setExpTopic(p=>({...p,[id]:!p[id]}));
+  const [reqBoard,setReqBoard]=useState({});
+  const [reqSent,setReqSent]=useState({});
+
+  const visibleSubjects=ALL_SUBJECTS.filter(s=>assignedSubjectIds.includes(s.id));
+  const subjectsWithSpec=visibleSubjects.filter(s=>SUBJECTS.find(x=>x.id===s.id));
+  const subjectsWithoutSpec=visibleSubjects.filter(s=>!SUBJECTS.find(x=>x.id===s.id));
+
+  const sendRequest=async(s)=>{
+    if(!reqBoard[s.id]?.trim()){return;}
+    await window.__firebase.sendSpecRequest(user.username,s.id,s.name,reqBoard[s.id]);
+    setReqSent(p=>({...p,[s.id]:true}));
+  };
+
   return <div>
     <div style={S.sectionHeader}>Spec Tracker</div>
-    <p style={S.sectionSub}>Click a subject to expand, then a topic to see all subtopics.</p>
-    <div style={{display:"grid",gap:12}}>
-      {SUBJECTS.map(s=>{
+    <p style={{color:"#475569",fontSize:12,marginBottom:20,marginTop:4}}>Only subjects assigned in your timetable appear here.</p>
+    {visibleSubjects.length===0&&<div style={{...S.card,color:"#475569",fontSize:13}}>No subjects assigned yet — go to the Timetable tab first.</div>}
+
+    {subjectsWithSpec.length>0&&<div style={{display:"grid",gap:12,marginBottom:20}}>
+      {subjectsWithSpec.map(s=>{
         const prog=getProgress(s.id);const gPct=Math.round((prog.green/prog.total)*100);const open=expSubj===s.id;
         return <div key={s.id} style={{...S.card,borderLeft:`3px solid ${s.color}`}}>
           <button style={S.subjBtn} onClick={()=>setExpSubj(open?null:s.id)}>
@@ -437,10 +714,8 @@ function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getP
                 </button>
                 {tOpen&&<div style={{marginTop:8}}>
                   <div style={S.specHeader}>
-                    <span style={{flex:3}}>Subtopic</span>
-                    <span style={{flex:2}}>Coverage</span>
-                    <span style={{flex:1,textAlign:"center"}}>RAG</span>
-                    <span style={{flex:2}}>Last revised</span>
+                    <span style={{flex:3}}>Subtopic</span><span style={{flex:2}}>Coverage</span>
+                    <span style={{flex:1,textAlign:"center"}}>RAG</span><span style={{flex:2}}>Last revised</span>
                   </div>
                   {t.subtopics.map((st,i)=>{
                     const v=getVal(s.id,t.id,i);
@@ -466,41 +741,57 @@ function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getP
           </div>}
         </div>;
       })}
-    </div>
+    </div>}
+
+    {subjectsWithoutSpec.length>0&&<div>
+      <div style={{fontSize:12,color:"#475569",marginBottom:12,fontWeight:600,textTransform:"uppercase",letterSpacing:1}}>Subjects without spec data</div>
+      <div style={{display:"grid",gap:12}}>
+        {subjectsWithoutSpec.map(s=><div key={s.id} style={{...S.card,borderLeft:`3px solid ${s.color}`}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+            <span style={{fontSize:20}}>{s.emoji}</span>
+            <div style={{fontWeight:700,color:"#f1f5f9",fontSize:14}}>{s.name}</div>
+          </div>
+          <div style={{background:"#0b1120",borderRadius:8,padding:14,border:"1px solid #1e293b"}}>
+            <div style={{fontSize:12,color:"#64748b",marginBottom:10}}>No exam board spec found for this subject yet.</div>
+            {reqSent[s.id]?<div style={{fontSize:12,color:"#4ade80"}}>✓ Request sent! The spec will be added soon.</div>:<div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+              <input value={reqBoard[s.id]||""} onChange={e=>setReqBoard(p=>({...p,[s.id]:e.target.value}))}
+                placeholder="Enter your exam board (e.g. AQA, Edexcel, OCR...)" style={{...S.input,fontSize:12,flex:1,minWidth:200}}/>
+              <button onClick={()=>sendRequest(s)} style={{...S.btnGreen,fontSize:12,flexShrink:0}}>📨 Request spec</button>
+            </div>}
+          </div>
+        </div>)}
+      </div>
+    </div>}
   </div>;
 }
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 function App(){
-  const [user,setUser]=useState(null); // {uid, username}
+  const [user,setUser]=useState(null);
   const [tab,setTab]=useState("timetable");
   const [timetable,setTimetableRaw]=useState({});
   const [subtopicData,setSubtopicDataRaw]=useState({});
   const [grades,setGradesRaw]=useState({});
+  const [tests,setTestsRaw]=useState([]);
+  const [geminiKey,setGeminiKeyRaw]=useState("");
   const [expSubj,setExpSubj]=useState(null);
   const [expTopic,setExpTopic]=useState({});
   const [saving,setSaving]=useState(false);
-  const [saveMsg,setSaveMsg]=useState("");
   const [checking,setChecking]=useState(true);
+  const [showSettings,setShowSettings]=useState(false);
   const saveTimer=useRef(null);
 
-  // Auto-restore session on page load
   useEffect(()=>{
     const tryRestore=()=>{
-      if(!window.__firebase){
-        window.addEventListener("firebaseReady",tryRestore,{once:true});
-        return;
-      }
+      if(!window.__firebase){window.addEventListener("firebaseReady",tryRestore,{once:true});return;}
       const unsub=window.__firebase.onAuthChange(async(fbUser)=>{
         if(fbUser){
           try{
             const snap=await window.__firebase.loadDoc(fbUser.uid);
             if(snap){
-              setTimetableRaw(snap.timetable||{});
-              setSubtopicDataRaw(snap.spec||{});
-              setGradesRaw(snap.grades||{});
-              const uname=snap.username||fbUser.email.replace("@gcsetracker.app","");
-              setUser({uid:fbUser.uid,username:uname});
+              setTimetableRaw(snap.timetable||{});setSubtopicDataRaw(snap.spec||{});
+              setGradesRaw(snap.grades||{});setTestsRaw(snap.tests||[]);setGeminiKeyRaw(snap.geminiKey||"");
+              setUser({uid:fbUser.uid,username:snap.username||fbUser.email.replace("@gcsetracker.app","")});
             }
           }catch(e){console.error(e);}
         }
@@ -509,78 +800,79 @@ function App(){
       return unsub;
     };
     const unsub=tryRestore();
-    return()=>{ if(typeof unsub==="function") unsub(); };
+    return()=>{if(typeof unsub==="function")unsub();};
   },[]);
 
-  const saveToFirebase=useCallback(async(uid,tt,spec,gr)=>{
+  const saveToFirebase=useCallback(async(uid,tt,spec,gr,ts,gk)=>{
     if(!uid||!window.__firebase)return;
     setSaving(true);
-    await window.__firebase.saveData(uid,{timetable:tt,spec,grades:gr});
-    setSaving(false);setSaveMsg("Saved ✓");
-    setTimeout(()=>setSaveMsg(""),2000);
+    await window.__firebase.saveData(uid,{timetable:tt,spec,grades:gr,tests:ts,geminiKey:gk});
+    setSaving(false);
   },[]);
 
-  const debouncedSave=useCallback((uid,tt,spec,gr)=>{
+  const debouncedSave=useCallback((uid,tt,spec,gr,ts,gk)=>{
     clearTimeout(saveTimer.current);
-    saveTimer.current=setTimeout(()=>saveToFirebase(uid,tt,spec,gr),1500);
+    saveTimer.current=setTimeout(()=>saveToFirebase(uid,tt,spec,gr,ts,gk),1500);
   },[saveToFirebase]);
 
-  const setTimetable=v=>{const next=typeof v==="function"?v(timetable):v;setTimetableRaw(next);if(user)debouncedSave(user.uid,next,subtopicData,grades);};
-  const setSubtopicData=v=>{const next=typeof v==="function"?v(subtopicData):v;setSubtopicDataRaw(next);if(user)debouncedSave(user.uid,timetable,next,grades);};
-  const setGrades=v=>{const next=typeof v==="function"?v(grades):v;setGradesRaw(next);if(user)debouncedSave(user.uid,timetable,subtopicData,next);};
+  const setTimetable=v=>{const next=typeof v==="function"?v(timetable):v;setTimetableRaw(next);if(user)debouncedSave(user.uid,next,subtopicData,grades,tests,geminiKey);};
+  const setSubtopicData=v=>{const next=typeof v==="function"?v(subtopicData):v;setSubtopicDataRaw(next);if(user)debouncedSave(user.uid,timetable,next,grades,tests,geminiKey);};
+  const setGrades=v=>{const next=typeof v==="function"?v(grades):v;setGradesRaw(next);if(user)debouncedSave(user.uid,timetable,subtopicData,next,tests,geminiKey);};
+  const setTests=v=>{const next=typeof v==="function"?v(tests):v;setTestsRaw(next);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,next,geminiKey);};
+  const setGeminiKey=v=>{setGeminiKeyRaw(v);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,v);};
 
   const handleLogin=(uid,username,data)=>{
-    setTimetableRaw(data.timetable||{});
-    setSubtopicDataRaw(data.spec||{});
-    setGradesRaw(data.grades||{});
+    setTimetableRaw(data.timetable||{});setSubtopicDataRaw(data.spec||{});
+    setGradesRaw(data.grades||{});setTestsRaw(data.tests||[]);setGeminiKeyRaw(data.geminiKey||"");
     setUser({uid,username});
   };
-
   const handleLogout=async()=>{
     await window.__firebase.logout();
-    setUser(null);setTimetableRaw({});setSubtopicDataRaw({});setGradesRaw({});
+    setUser(null);setTimetableRaw({});setSubtopicDataRaw({});setGradesRaw({});setTestsRaw([]);setGeminiKeyRaw("");
   };
 
   const getVal=(sId,tId,i)=>subtopicData[`${sId}__${tId}__${i}`]||{coverage:"Not started",rag:"Red",date:""};
   const setVal=(sId,tId,i,field,value)=>{const k=`${sId}__${tId}__${i}`;setSubtopicData(p=>({...p,[k]:{...getVal(sId,tId,i),[field]:value}}));};
   const getProgress=(sId)=>{
-    const subj=SUBJECTS.find(s=>s.id===sId);let total=0,green=0,amber=0;
+    const subj=SUBJECTS.find(s=>s.id===sId);if(!subj)return{total:1,green:0,amber:0,red:1};
+    let total=0,green=0,amber=0;
     subj.topics.forEach(t=>t.subtopics.forEach((_,i)=>{total++;const v=getVal(sId,t.id,i);if(v.rag==="Green")green++;else if(v.rag==="Amber")amber++;}));
     return{total,green,amber,red:total-green-amber};
   };
 
-  if(checking) return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#0a0f1e",color:"#475569",fontFamily:"monospace",fontSize:13}}>Connecting...</div>;
-  if(!user) return <LoginScreen onLogin={handleLogin}/>;
+  // Work out which subjects are assigned in the timetable
+  const assignedSubjectIds=[...new Set(Object.values(timetable).flatMap(v=>Array.isArray(v)?v:(v?[v]:[])).filter(Boolean))];
+
+  if(checking)return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#0a0f1e",color:"#475569",fontFamily:"monospace",fontSize:13}}>Connecting...</div>;
+  if(!user)return <LoginScreen onLogin={handleLogin}/>;
 
   return <div style={S.root}>
+    {showSettings&&<Settings geminiKey={geminiKey} setGeminiKey={setGeminiKey} onSave={k=>setGeminiKey(k)} onClose={()=>setShowSettings(false)}/>}
     <div style={S.header}>
       <div style={S.headerInner}>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           <span style={{fontSize:32}}>📋</span>
-          <div>
-            <div style={S.title}>GCSE Revision Tracker</div>
-            <div style={S.subtitle}>Exams: May-Jun 2027 · Target: All 9s</div>
-          </div>
+          <div style={S.title}>GCSE Revision Tracker</div>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:12}}>
-          {saveMsg&&<span style={{fontSize:11,color:"#4ade80",fontFamily:"monospace"}}>{saveMsg}</span>}
-          {saving&&<span style={{fontSize:11,color:"#64748b",fontFamily:"monospace"}}>Saving...</span>}
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:11,color:saving?"#64748b":"#334155",fontFamily:"monospace",minWidth:60}}>{saving?"Saving...":"Saved ✓"}</span>
+          {geminiKey&&<span style={{fontSize:11,color:"#4ade80",background:"rgba(74,222,128,0.1)",border:"1px solid rgba(74,222,128,0.2)",borderRadius:4,padding:"2px 7px"}}>🤖 AI on</span>}
+          <button onClick={()=>setShowSettings(true)} style={S.btn}>⚙️ Settings</button>
           <span style={{fontSize:12,color:"#475569",fontFamily:"monospace"}}>👤 {user.username}</span>
-          <button onClick={handleLogout} style={{background:"transparent",border:"1px solid #334155",borderRadius:6,color:"#64748b",padding:"4px 10px",cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>
-            Log out
-          </button>
+          <button onClick={handleLogout} style={{...S.btn,color:"#64748b"}}>Log out</button>
         </div>
       </div>
       <div style={S.tabBar}>
-        {[["timetable","📅 Timetable"],["grades","📊 Grades"],["spec","📖 Spec Tracker"]].map(([id,label])=>
+        {[["timetable","📅 Timetable"],["grades","📊 Grades"],["spec","📖 Spec Tracker"],["ai","🤖 AI Coach"]].map(([id,label])=>
           <button key={id} style={{...S.tabBtn,...(tab===id?S.tabActive:{})}} onClick={()=>setTab(id)}>{label}</button>
         )}
       </div>
     </div>
     <div style={S.body}>
-      {tab==="timetable"&&<Timetable timetable={timetable} setTimetable={setTimetable}/>}
-      {tab==="grades"&&<Grades grades={grades} setGrades={setGrades} getProgress={getProgress}/>}
-      {tab==="spec"&&<SpecTracker expSubj={expSubj} setExpSubj={setExpSubj} expTopic={expTopic} setExpTopic={setExpTopic} getVal={getVal} setVal={setVal} getProgress={getProgress}/>}
+      {tab==="timetable"&&<Timetable timetable={timetable} setTimetable={setTimetable} tests={tests} setTests={setTests} geminiKey={geminiKey} getProgress={getProgress} subtopicData={subtopicData}/>}
+      {tab==="grades"&&<Grades grades={grades} setGrades={setGrades} getProgress={getProgress} assignedSubjectIds={assignedSubjectIds}/>}
+      {tab==="spec"&&<SpecTracker expSubj={expSubj} setExpSubj={setExpSubj} expTopic={expTopic} setExpTopic={setExpTopic} getVal={getVal} setVal={setVal} getProgress={getProgress} assignedSubjectIds={assignedSubjectIds} user={user}/>}
+      {tab==="ai"&&<AICoach geminiKey={geminiKey} timetable={timetable} subtopicData={subtopicData} grades={grades} tests={tests}/>}
     </div>
   </div>;
 }
