@@ -534,7 +534,7 @@ function Timetable({timetable,setTimetable,tests,setTests,groqKey,geminiKey,aiPr
             return <td key={slot} style={{...S.td,verticalAlign:"top"}}>
               {showSel&&<select multiple value={vals} onChange={e=>{const sel=Array.from(e.target.selectedOptions).map(o=>o.value);setSlot(day,slot,sel);}}
                 style={{...S.sel,height:"112px",width:"100%",fontSize:12,border:`1px solid ${borderCol}`}}>
-                {ALL_SUBJECTS.map(s=>{const sel=vals.includes(s.id);const actualColor=getActualColor(s.color);return <option key={s.id} value={s.id} style={{color:sel?actualColor:"var(--text2)",background:sel?actualColor+"22":"#111827",fontWeight:sel?700:400,padding:"4px 6px"}}>{s.emoji} {s.name}</option>;})}
+                {ALL_SUBJECTS.map(s=>{const sel=vals.includes(s.id);const actualColor=getActualColor(s.color);return <option key={s.id} value={s.id} style={{color:sel?actualColor:"var(--text2)",background:sel?actualColor+"22":"var(--bg3)",fontWeight:sel?700:400,padding:"4px 6px"}}>{s.emoji} {s.name}</option>;})}
               </select>}
               {vals.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:3,marginTop:showSel?6:0}}>
                 {vals.map(id=>{const s=ALL_SUBJECTS.find(x=>x.id===id);const actualColor=getActualColor(s.color);return s?<span key={id} style={{fontSize:11,background:actualColor+"22",color:actualColor,borderRadius:5,padding:"2px 7px",border:`2px solid ${actualColor}`}}>{s.emoji} {s.name}</span>:null;})}
@@ -767,7 +767,7 @@ function AICoach({groqKey,geminiKey,aiProvider,subtopicData,tests,chats,setChats
         <div style={{flex:1,overflowY:"auto"}}>
           {(!chats||chats.length===0)&&<div style={{padding:"12px 14px",fontSize:11,color:"var(--text3)"}}>No chats yet</div>}
           {(chats||[]).map(c=><div key={c.id} onClick={()=>setActiveChatId(c.id)}
-            style={{padding:"10px 14px",cursor:"pointer",borderBottom:"1px solid #111827",background:activeChatId===c.id?"rgba(79,130,255,0.1)":"transparent",borderLeft:activeChatId===c.id?"2px solid #60a5fa":"2px solid transparent",transition:"background 0.12s"}}>
+            style={{padding:"10px 14px",cursor:"pointer",borderBottom:"1px solid var(--border)",background:activeChatId===c.id?"rgba(79,130,255,0.1)":"transparent",borderLeft:activeChatId===c.id?"2px solid #60a5fa":"2px solid transparent",transition:"background 0.12s"}}>
             <div style={{fontSize:12,fontWeight:500,color:"var(--text2)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{c.name}</div>
             <div style={{fontSize:10,color:"var(--text3)",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{c.messages&&c.messages.length>0&&c.messages[c.messages.length-1]?.text?c.messages[c.messages.length-1].text.slice(0,40):""}</div>
           </div>)}
@@ -791,7 +791,7 @@ function AICoach({groqKey,geminiKey,aiProvider,subtopicData,tests,chats,setChats
           :<div style={{display:"flex",flexDirection:"column",flex:1,minHeight:0}}>
             <div style={{flex:1,overflowY:"auto",padding:16,display:"flex",flexDirection:"column",gap:10}}>
               {messages.map((m,i)=><div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
-                <div style={{maxWidth:"80%",background:m.role==="user"?"#1d4ed8":"#111827",borderRadius:10,padding:"10px 14px",fontSize:13,color:"var(--text)",lineHeight:1.6,whiteSpace:"pre-wrap",border:m.role==="user"?"none":"1px solid #1e293b"}}>
+                <div style={{maxWidth:"80%",background:m.role==="user"?"#1d4ed8":"var(--bg3)",borderRadius:10,padding:"10px 14px",fontSize:13,color:"var(--text)",lineHeight:1.6,whiteSpace:"pre-wrap",border:m.role==="user"?"none":"1px solid #1e293b"}}>
                   {m.text}
                 </div>
               </div>)}
@@ -885,7 +885,10 @@ function Grades({grades,setGrades,getProgress,assignedSubjectIds}){
 function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getProgress,assignedSubjectIds,user,specRequests,setSpecRequests,aiConfig}){
   const toggleTopic=id=>setExpTopic(p=>({...p,[id]:!p[id]}));
   const [reqBoard,setReqBoard]=useState({});
-  const gizmoSearch=(q)=>window.open("https://gizmo.ai/community?q="+encodeURIComponent(q),"_blank");
+  const gizmoSearch=(q)=>{
+    try{navigator.clipboard.writeText(q);}catch(e){}
+    window.open("https://app.gizmo.ai/decks/public","_blank");
+  };
   const [confirming,setConfirming]=useState(null);
   const [reqLoading,setReqLoading]=useState(false);
   const [gizmoModal,setGizmoModal]=useState(null);
@@ -898,7 +901,7 @@ function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getP
     if(!activeKey){setGizmoModal({subj,topic,subtopic,rag});setGizmoText("No AI key set — go to the menu and open AI Setup.");return;}
     setGizmoModal({subj,topic,subtopic,rag});
     setGizmoLoading(true);setGizmoText("");
-    const prompt="Generate concise GCSE revision notes for: "+subj.name+" ("+subj.board+") — "+topic.name+" — "+subtopic+". This is rated "+rag+" so needs work. Format as bullet points the student can paste into Gizmo to auto-generate flashcards. Keep it under 200 words, factual, exam-focused. Start each bullet with a dash.";
+    const prompt="Generate detailed GCSE revision notes for: "+subj.name+" ("+subj.board+") — "+topic.name+" — "+subtopic+". Generate 10-15 bullet points covering key facts, definitions, formulas, and exam tips a student needs to know. Each bullet should be a complete, standalone fact. Format as: - [point]. Be factual, concise, exam-focused. UK curriculum.";
     try{
       const reply=await callAI(aiConfig,prompt,"You are a GCSE revision assistant. Generate concise, accurate bullet-point notes for flashcard creation. Be factual and exam-focused. Use UK English.");
       setGizmoText(reply);
@@ -940,7 +943,7 @@ function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getP
         </div>
         <div style={{display:"flex",gap:8}}>
           <button onClick={copyGizmo} disabled={!gizmoText||gizmoLoading} style={{...S.btnBlue,fontSize:12,opacity:(!gizmoText||gizmoLoading)?0.4:1}}>{gizmoCopied?"✓ Copied!":"📋 Copy notes"}</button>
-          <a href={"https://gizmo.ai/community?q="+encodeURIComponent((gizmoModal.subj?.board||"")+" "+gizmoModal.subj?.name+" "+(gizmoModal.subtopic||""))} target="_blank" rel="noopener noreferrer" style={{...S.btn,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4,fontSize:12,color:"#a78bfa",borderColor:"rgba(124,58,237,0.3)"}}>🃏 Search Gizmo</a>
+          <button onClick={()=>gizmoSearch(gizmoModal.subj?.name+" "+(gizmoModal.subj?.board||"")+" GCSE "+gizmoModal.subtopic)} style={{...S.btn,fontSize:12,color:"#a78bfa",borderColor:"rgba(124,58,237,0.3)"}}>🃏 Search Gizmo</button>
           {gizmoText&&<button onClick={()=>handleGizmoNotes(gizmoModal.subj,gizmoModal.topic,gizmoModal.subtopic,gizmoModal.rag)} style={{...S.btn,fontSize:12}}>↺ Regenerate</button>}
         </div>
         {gizmoText&&!gizmoLoading&&<div style={{fontSize:10,color:"var(--text3)",marginTop:10,lineHeight:1.5}}>Copy these notes, then on Gizmo click "Create deck" → paste into the text box → Gizmo will auto-generate flashcards for you.</div>}
@@ -1020,10 +1023,10 @@ function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getP
                       </div>
                       <input type="date" value={v.date} onChange={e=>setVal(s.id,t.id,i,"date",e.target.value)} style={{...S.specDate,flex:2}}/>
                       <div style={{display:"flex",gap:3,flexShrink:0}}>
-                        <a href={"https://gizmo.ai/community?q="+encodeURIComponent(s.board+" "+s.name+" "+st)} target="_blank" rel="noopener noreferrer"
-                          title="Find flashcards on Gizmo"
-                          style={{display:"flex",alignItems:"center",justifyContent:"center",width:22,height:22,background:"rgba(124,58,237,0.12)",border:"1px solid rgba(124,58,237,0.25)",borderRadius:4,fontSize:10,textDecoration:"none",color:"#a78bfa"}}>🃏</a>
-                        {(v.rag==="Red"||v.rag==="Amber")&&<button title="Generate AI notes for Gizmo" onClick={()=>handleGizmoNotes(s,t,st,v.rag)} style={{display:"flex",alignItems:"center",justifyContent:"center",width:22,height:22,background:"rgba(79,142,255,0.1)",border:"1px solid rgba(79,142,255,0.2)",borderRadius:4,fontSize:10,cursor:"pointer",color:"var(--accent)",padding:0}}>✦</button>}
+                        <button onClick={()=>gizmoSearch(s.name+" "+st+" GCSE")}
+                          title="Copy topic name & open Gizmo"
+                          style={{display:"flex",alignItems:"center",justifyContent:"center",width:22,height:22,background:"rgba(124,58,237,0.12)",border:"1px solid rgba(124,58,237,0.25)",borderRadius:4,fontSize:10,cursor:"pointer",color:"#a78bfa",padding:0}}>🃏</button>
+                        {<button title="Generate AI notes for Gizmo" onClick={()=>handleGizmoNotes(s,t,st,v.rag)} style={{display:"flex",alignItems:"center",justifyContent:"center",width:22,height:22,background:"rgba(79,142,255,0.1)",border:"1px solid rgba(79,142,255,0.2)",borderRadius:4,fontSize:10,cursor:"pointer",color:"var(--accent)",padding:0}}>✦</button>}
                       </div>
                     </div>;
                   })}
