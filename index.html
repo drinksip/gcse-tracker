@@ -43,7 +43,7 @@ input:-webkit-autofill { -webkit-box-shadow: 0 0 0 30px #111827 inset !important
     async register(username, password) {
       const email = username.trim().toLowerCase() + "@gcsetracker.app";
       const cred = await createUserWithEmailAndPassword(auth, email, password);
-      await setDoc(doc(db, "users", cred.user.uid), { username: username.trim().toLowerCase(), timetable:{}, spec:{}, grades:{}, tests:[], geminiKey:"" });
+      await setDoc(doc(db, "users", cred.user.uid), { username: username.trim().toLowerCase(), timetable:{}, spec:{}, grades:{}, tests:[], groqKey:"" });
       return { uid: cred.user.uid, username: username.trim().toLowerCase() };
     },
     async login(username, password) {
@@ -224,6 +224,26 @@ function MiniProgress({prog}){
   return <div style={{width:60,height:6,background:"#1e293b",borderRadius:3,overflow:"hidden",display:"flex"}}><div style={{width:`${g}%`,background:"#4ade80",height:"100%"}}/><div style={{width:`${a}%`,background:"#fbbf24",height:"100%"}}/></div>;
 }
 
+// ─── SHARED AI CALL (Groq / Llama 3.3 70B) ───────────────────────────────────
+async function callAI(apiKey, prompt, systemPrompt="You are a helpful GCSE revision assistant."){
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions",{
+    method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiKey}`},
+    body:JSON.stringify({
+      model:"llama-3.3-70b-versatile",
+      messages:[
+        {role:"system", content: systemPrompt},
+        {role:"user", content: prompt}
+      ],
+      max_tokens:1024,
+      temperature:0.7,
+    })
+  });
+  const data = await res.json();
+  if(data.error) throw new Error(data.error.message);
+  return data.choices?.[0]?.message?.content || "No response received.";
+}
+
 // ─── LOGIN ────────────────────────────────────────────────────────────────────
 function LoginScreen({onLogin}){
   const [username,setUsername]=useState("");
@@ -286,11 +306,11 @@ function LoginScreen({onLogin}){
 }
 
 // ─── AI SETUP PANEL ───────────────────────────────────────────────────────────
-function Settings({geminiKey,setGeminiKey,onSave,onClose}){
-  const [key,setKey]=useState(geminiKey||"");
+function Settings({groqKey,setGroqKey,onSave,onClose}){
+  const [key,setKey]=useState(groqKey||"");
   const [saved,setSaved]=useState(false);
   const [showSteps,setShowSteps]=useState(false);
-  const save=()=>{setGeminiKey(key);onSave(key);setSaved(true);setTimeout(()=>setSaved(false),2000);};
+  const save=()=>{setGroqKey(key);onSave(key);setSaved(true);setTimeout(()=>setSaved(false),2000);};
   return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
     <div style={{background:"#0d1526",border:"1px solid #1e293b",borderRadius:16,padding:"32px",width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
@@ -298,7 +318,7 @@ function Settings({geminiKey,setGeminiKey,onSave,onClose}){
         <button onClick={onClose} style={{...S.btn,padding:"4px 10px"}}>✕ Close</button>
       </div>
       <div style={{fontSize:12,color:"#94a3b8",marginBottom:16,lineHeight:1.7}}>
-        Add your free Gemini API key to unlock the AI Timetable Optimiser and AI Study Coach. It takes about 2 minutes and requires no payment.
+        Add your free Groq API key to unlock the AI Timetable Optimiser, AI Study Coach, and future AI features like question generation. Free, no age restriction, no card needed.
       </div>
       <div style={{background:"#0b1120",border:"1px solid #1e293b",borderRadius:10,padding:16,marginBottom:16}}>
         <button onClick={()=>setShowSteps(p=>!p)} style={{...S.btn,width:"100%",textAlign:"left",display:"flex",justifyContent:"space-between",padding:"8px 12px"}}>
@@ -306,11 +326,12 @@ function Settings({geminiKey,setGeminiKey,onSave,onClose}){
         </button>
         {showSteps&&<div style={{marginTop:14,display:"flex",flexDirection:"column",gap:10}}>
           {[
-            ["1","Go to Google AI Studio","Click the link below to open Google AI Studio. Sign in with any Google account."],
-            ["2","Click Get API key","In the top-left menu or on the homepage, click Get API key."],
-            ["3","Create a new API key","Click Create API key, then choose Create API key in new project. It generates instantly."],
-            ["4","Copy the key","Click the copy icon next to your new key (starts with AIza...)."],
-            ["5","Paste it below","Paste it into the box below and click Save API Key."],
+            ["1","Go to Groq Console","Click the link below to open Groq Console. You only need an email to sign up — no age restriction."],
+            ["2","Sign up or log in","Create a free account with your email. No credit card required."],
+            ["3","Go to API Keys","In the left sidebar, click API Keys."],
+            ["4","Create an API key","Click Create API Key, give it any name, then click Submit."],
+            ["5","Copy the key","Copy the key shown (starts with gsk_...). You won't be able to see it again so copy it now."],
+            ["6","Paste it below","Paste it into the box below and click Save API Key."],
           ].map(([n,title,desc])=><div key={n} style={{display:"flex",gap:12,alignItems:"flex-start"}}>
             <div style={{width:22,height:22,borderRadius:"50%",background:"#1d4ed8",color:"white",fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>{n}</div>
             <div>
@@ -318,25 +339,28 @@ function Settings({geminiKey,setGeminiKey,onSave,onClose}){
               <div style={{fontSize:11,color:"#64748b",lineHeight:1.5}}>{desc}</div>
             </div>
           </div>)}
-          <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer"
+          <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer"
             style={{display:"inline-block",marginTop:4,background:"#1d4ed8",color:"white",borderRadius:7,padding:"8px 16px",fontSize:12,fontWeight:700,textDecoration:"none",textAlign:"center"}}>
-            🔗 Open Google AI Studio →
+            🔗 Open Groq Console →
           </a>
         </div>}
       </div>
-      <div style={{fontSize:11,color:"#64748b",marginBottom:6}}>Paste your API key here:</div>
-      <input value={key} onChange={e=>setKey(e.target.value)} placeholder="AIza..." style={{...S.input,fontSize:12,marginBottom:10}}/>
+      <div style={{fontSize:11,color:"#64748b",marginBottom:6}}>Paste your Groq API key here:</div>
+      <input value={key} onChange={e=>setKey(e.target.value)} placeholder="gsk_..." style={{...S.input,fontSize:12,marginBottom:10}}/>
       <div style={{display:"flex",alignItems:"center",gap:10}}>
         <button onClick={save} style={{...S.btnBlue,fontSize:12,padding:"8px 16px"}}>{saved?"✓ Saved!":"Save API Key"}</button>
         {key&&<span style={{fontSize:11,color:"#4ade80"}}>✓ AI features active</span>}
         {!key&&<span style={{fontSize:11,color:"#475569"}}>No key set — AI features disabled</span>}
+      </div>
+      <div style={{fontSize:10,color:"#334155",marginTop:14,lineHeight:1.6}}>
+        Uses Llama 3.3 70B — a strong model well-suited to GCSE-level questions. Always verify important answers with your textbook or teacher.
       </div>
     </div>
   </div>;
 }
 
 // ─── TIMETABLE ────────────────────────────────────────────────────────────────
-function Timetable({timetable,setTimetable,tests,setTests,geminiKey,getProgress,subtopicData}){
+function Timetable({timetable,setTimetable,tests,setTests,groqKey,getProgress,subtopicData}){
   const [showSel,setShowSel]=useState(false);
   const [showAI,setShowAI]=useState(false);
   const [aiLoading,setAiLoading]=useState(false);
@@ -370,7 +394,7 @@ function Timetable({timetable,setTimetable,tests,setTests,geminiKey,getProgress,
   const removeTest=(id)=>setTests(p=>(p||[]).filter(t=>t.id!==id));
 
   const runAI=async()=>{
-    if(!geminiKey){setAiResult("No Gemini API key set. Go to ⚙️ Settings to add one.");return;}
+    if(!groqKey){setAiResult("No Groq API key set. Go to 🤖 AI Setup to add one.");return;}
     setAiLoading(true);setAiResult("");
     const ragSummary=assignedSubjectIds.map(id=>{
       const s=ALL_SUBJECTS.find(x=>x.id===id);
@@ -387,7 +411,7 @@ function Timetable({timetable,setTimetable,tests,setTests,geminiKey,getProgress,
     }).join("\n");
 
     const testsList=upcomingTests.map(t=>`${t.subject} - ${t.type} in ${daysUntil(t.date)} days`).join("\n")||"No upcoming tests";
-    const prompt=`You are a helpful GCSE revision assistant. A student wants help optimising their weekly revision timetable.
+    const prompt=`A student wants help optimising their weekly revision timetable.
 
 Their current spec coverage (RAG status):
 ${ragSummary}
@@ -403,17 +427,12 @@ Student info:
 Days available: Mon-Sat (Sunday is a rest day)
 Sessions per day: Daily habit (short), Evening 1, Evening 2
 
-Please suggest an optimised weekly timetable for this student. For each day list which subject(s) to study in each session and briefly explain why. Keep it practical and encouraging. Format it clearly with each day on a new line.`;
+Please suggest an optimised weekly timetable. For each day list which subject(s) to study in each session and briefly explain why. Keep it practical and encouraging. Format it clearly with each day on a new line.`;
 
     try{
-      const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})
-      });
-      const data=await res.json();
-      if(data.error){setAiResult("Error: "+data.error.message);}
-      else{setAiResult(data.candidates?.[0]?.content?.parts?.[0]?.text||"No response received.");}
-    }catch(e){setAiResult("Failed to connect to Gemini. Check your API key.");}
+      const result = await callAI(groqKey, prompt, "You are a helpful GCSE revision assistant. Give practical, accurate advice.");
+      setAiResult(result);
+    }catch(e){setAiResult("Failed to connect to Groq. Check your API key in 🤖 AI Setup.");}
     setAiLoading(false);
   };
 
@@ -519,7 +538,7 @@ Please suggest an optimised weekly timetable for this student. For each day list
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <span style={{fontSize:16}}>🤖</span>
           <div style={S.cardTitle}>AI Timetable Optimiser</div>
-          {!geminiKey&&<span style={{fontSize:10,color:"#475569",background:"#1e293b",borderRadius:4,padding:"2px 6px"}}>Needs API key</span>}
+          {!groqKey&&<span style={{fontSize:10,color:"#475569",background:"#1e293b",borderRadius:4,padding:"2px 6px"}}>Needs Groq key</span>}
         </div>
         <button onClick={()=>setShowAI(p=>!p)} style={S.btn}>{showAI?"Hide":"Optimise my timetable ✨"}</button>
       </div>
@@ -550,7 +569,7 @@ Please suggest an optimised weekly timetable for this student. For each day list
 }
 
 // ─── AI STUDY COACH ───────────────────────────────────────────────────────────
-function AICoach({geminiKey,timetable,subtopicData,grades,tests}){
+function AICoach({groqKey,timetable,subtopicData,grades,tests}){
   const [messages,setMessages]=useState([{role:"assistant",text:"Hi! I'm your AI study coach. Ask me anything — which topics to focus on, how to tackle a subject, exam tips, or anything else revision-related. I can see your RAG data and upcoming tests to give you personalised advice."}]);
   const [input,setInput]=useState("");
   const [loading,setLoading]=useState(false);
@@ -575,34 +594,30 @@ function AICoach({geminiKey,timetable,subtopicData,grades,tests}){
 
   const send=async()=>{
     if(!input.trim())return;
-    if(!geminiKey){setMessages(p=>[...p,{role:"user",text:input},{role:"assistant",text:"No Gemini API key set. Go to ⚙️ Settings to add one."}]);setInput("");return;}
+    if(!groqKey){setMessages(p=>[...p,{role:"user",text:input},{role:"assistant",text:"No Groq API key set. Go to 🤖 AI Setup to add one."}]);setInput("");return;}
     const userMsg=input.trim();
     setMessages(p=>[...p,{role:"user",text:userMsg}]);
     setInput("");setLoading(true);
     const history=messages.map(m=>`${m.role==="user"?"Student":"Coach"}: ${m.text}`).join("\n");
-    const prompt=`You are a friendly, encouraging GCSE revision coach. Keep responses concise and practical.
-
-${buildContext()}
+    const prompt=`${buildContext()}
 
 Conversation so far:
 ${history}
-Student: ${userMsg}
-Coach:`;
+Student: ${userMsg}`;
     try{
-      const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})
-      });
-      const data=await res.json();
-      const reply=data.candidates?.[0]?.content?.parts?.[0]?.text||"Sorry, I couldn't get a response.";
+      const reply = await callAI(
+        groqKey,
+        prompt,
+        "You are a friendly, encouraging GCSE revision coach. Keep responses concise and practical. Always verify your answers are accurate — this is for real students preparing for exams."
+      );
       setMessages(p=>[...p,{role:"assistant",text:reply}]);
-    }catch(e){setMessages(p=>[...p,{role:"assistant",text:"Failed to connect to Gemini. Check your API key."}]);}
+    }catch(e){setMessages(p=>[...p,{role:"assistant",text:"Failed to connect to Groq. Check your API key in 🤖 AI Setup."}]);}
     setLoading(false);
   };
 
   return <div>
     <div style={S.sectionHeader}>🤖 AI Study Coach</div>
-    <p style={{color:"#475569",fontSize:12,marginBottom:16,marginTop:4}}>Ask me anything about your revision. I can see your RAG data and upcoming tests.{!geminiKey&&<span style={{color:"#f87171"}}> (Add a Gemini API key in ⚙️ Settings to use this)</span>}</p>
+    <p style={{color:"#475569",fontSize:12,marginBottom:16,marginTop:4}}>Ask me anything about your revision. I can see your RAG data and upcoming tests.{!groqKey&&<span style={{color:"#f87171"}}> (Add a Groq API key in 🤖 AI Setup to use this)</span>}</p>
     <div style={{background:"#0d1526",border:"1px solid #1e293b",borderRadius:10,display:"flex",flexDirection:"column",height:480}}>
       <div style={{flex:1,overflowY:"auto",padding:16,display:"flex",flexDirection:"column",gap:12}}>
         {messages.map((m,i)=><div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
@@ -830,7 +845,7 @@ function App(){
   const [subtopicData,setSubtopicDataRaw]=useState({});
   const [grades,setGradesRaw]=useState({});
   const [tests,setTestsRaw]=useState([]);
-  const [geminiKey,setGeminiKeyRaw]=useState("");
+  const [groqKey,setGroqKeyRaw]=useState("");
   const [specRequests,setSpecRequestsRaw]=useState([]);
   const [expSubj,setExpSubj]=useState(null);
   const [expTopic,setExpTopic]=useState({});
@@ -848,7 +863,7 @@ function App(){
             const snap=await window.__firebase.loadDoc(fbUser.uid);
             if(snap){
               setTimetableRaw(snap.timetable||{});setSubtopicDataRaw(snap.spec||{});
-              setGradesRaw(snap.grades||{});setTestsRaw(snap.tests||[]);setGeminiKeyRaw(snap.geminiKey||"");setSpecRequestsRaw(snap.specRequests||[]);
+              setGradesRaw(snap.grades||{});setTestsRaw(snap.tests||[]);setGroqKeyRaw(snap.groqKey||"");setSpecRequestsRaw(snap.specRequests||[]);
               setUser({uid:fbUser.uid,username:snap.username||fbUser.email.replace("@gcsetracker.app","")});
             }
           }catch(e){console.error(e);}
@@ -864,7 +879,7 @@ function App(){
   const saveToFirebase=useCallback(async(uid,tt,spec,gr,ts,gk,sr)=>{
     if(!uid||!window.__firebase)return;
     setSaving(true);
-    await window.__firebase.saveData(uid,{timetable:tt,spec,grades:gr,tests:ts,geminiKey:gk,specRequests:sr});
+    await window.__firebase.saveData(uid,{timetable:tt,spec,grades:gr,tests:ts,groqKey:gk,specRequests:sr});
     setSaving(false);
   },[]);
 
@@ -873,21 +888,21 @@ function App(){
     saveTimer.current=setTimeout(()=>saveToFirebase(uid,tt,spec,gr,ts,gk,sr),1500);
   },[saveToFirebase]);
 
-  const setTimetable=v=>{const next=typeof v==="function"?v(timetable):v;setTimetableRaw(next);if(user)debouncedSave(user.uid,next,subtopicData,grades,tests,geminiKey,specRequests);};
-  const setSubtopicData=v=>{const next=typeof v==="function"?v(subtopicData):v;setSubtopicDataRaw(next);if(user)debouncedSave(user.uid,timetable,next,grades,tests,geminiKey,specRequests);};
-  const setGrades=v=>{const next=typeof v==="function"?v(grades):v;setGradesRaw(next);if(user)debouncedSave(user.uid,timetable,subtopicData,next,tests,geminiKey,specRequests);};
-  const setTests=v=>{const next=typeof v==="function"?v(tests):v;setTestsRaw(next);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,next,geminiKey,specRequests);};
-  const setGeminiKey=v=>{setGeminiKeyRaw(v);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,v,specRequests);};
-  const setSpecRequests=v=>{const next=typeof v==="function"?v(specRequests):v;setSpecRequestsRaw(next);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,geminiKey,next);};
+  const setTimetable=v=>{const next=typeof v==="function"?v(timetable):v;setTimetableRaw(next);if(user)debouncedSave(user.uid,next,subtopicData,grades,tests,groqKey,specRequests);};
+  const setSubtopicData=v=>{const next=typeof v==="function"?v(subtopicData):v;setSubtopicDataRaw(next);if(user)debouncedSave(user.uid,timetable,next,grades,tests,groqKey,specRequests);};
+  const setGrades=v=>{const next=typeof v==="function"?v(grades):v;setGradesRaw(next);if(user)debouncedSave(user.uid,timetable,subtopicData,next,tests,groqKey,specRequests);};
+  const setTests=v=>{const next=typeof v==="function"?v(tests):v;setTestsRaw(next);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,next,groqKey,specRequests);};
+  const setGroqKey=v=>{setGroqKeyRaw(v);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,v,specRequests);};
+  const setSpecRequests=v=>{const next=typeof v==="function"?v(specRequests):v;setSpecRequestsRaw(next);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,groqKey,next);};
 
   const handleLogin=(uid,username,data)=>{
     setTimetableRaw(data.timetable||{});setSubtopicDataRaw(data.spec||{});
-    setGradesRaw(data.grades||{});setTestsRaw(data.tests||[]);setGeminiKeyRaw(data.geminiKey||"");setSpecRequestsRaw(data.specRequests||[]);
+    setGradesRaw(data.grades||{});setTestsRaw(data.tests||[]);setGroqKeyRaw(data.groqKey||"");setSpecRequestsRaw(data.specRequests||[]);
     setUser({uid,username});
   };
   const handleLogout=async()=>{
     await window.__firebase.logout();
-    setUser(null);setTimetableRaw({});setSubtopicDataRaw({});setGradesRaw({});setTestsRaw([]);setGeminiKeyRaw("");setSpecRequestsRaw([]);
+    setUser(null);setTimetableRaw({});setSubtopicDataRaw({});setGradesRaw({});setTestsRaw([]);setGroqKeyRaw("");setSpecRequestsRaw([]);
   };
 
   const getVal=(sId,tId,i)=>subtopicData[`${sId}__${tId}__${i}`]||{coverage:"Not started",rag:"Red",date:""};
@@ -906,7 +921,7 @@ function App(){
   if(!user)return <LoginScreen onLogin={handleLogin}/>;
 
   return <div style={S.root}>
-    {showSettings&&<Settings geminiKey={geminiKey} setGeminiKey={setGeminiKey} onSave={k=>setGeminiKey(k)} onClose={()=>setShowSettings(false)}/>}
+    {showSettings&&<Settings groqKey={groqKey} setGroqKey={setGroqKey} onSave={k=>setGroqKey(k)} onClose={()=>setShowSettings(false)}/>}
     <div style={S.header}>
       <div style={S.headerInner}>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
@@ -915,7 +930,7 @@ function App(){
         </div>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <span style={{fontSize:11,color:saving?"#64748b":"#334155",fontFamily:"monospace",minWidth:60}}>{saving?"Saving...":"Saved ✓"}</span>
-          {geminiKey&&<span style={{fontSize:11,color:"#4ade80",background:"rgba(74,222,128,0.1)",border:"1px solid rgba(74,222,128,0.2)",borderRadius:4,padding:"2px 7px"}}>🤖 AI on</span>}
+          {groqKey&&<span style={{fontSize:11,color:"#4ade80",background:"rgba(74,222,128,0.1)",border:"1px solid rgba(74,222,128,0.2)",borderRadius:4,padding:"2px 7px"}}>🤖 AI on</span>}
           <button onClick={()=>setShowSettings(true)} style={S.btn}>🤖 AI Setup</button>
           <span style={{fontSize:12,color:"#475569",fontFamily:"monospace"}}>👤 {user.username}</span>
           <button onClick={handleLogout} style={{...S.btn,color:"#64748b"}}>Log out</button>
@@ -928,10 +943,10 @@ function App(){
       </div>
     </div>
     <div style={S.body}>
-      {tab==="timetable"&&<Timetable timetable={timetable} setTimetable={setTimetable} tests={tests} setTests={setTests} geminiKey={geminiKey} getProgress={getProgress} subtopicData={subtopicData}/>}
+      {tab==="timetable"&&<Timetable timetable={timetable} setTimetable={setTimetable} tests={tests} setTests={setTests} groqKey={groqKey} getProgress={getProgress} subtopicData={subtopicData}/>}
       {tab==="grades"&&<Grades grades={grades} setGrades={setGrades} getProgress={getProgress} assignedSubjectIds={assignedSubjectIds}/>}
       {tab==="spec"&&<SpecTracker expSubj={expSubj} setExpSubj={setExpSubj} expTopic={expTopic} setExpTopic={setExpTopic} getVal={getVal} setVal={setVal} getProgress={getProgress} assignedSubjectIds={assignedSubjectIds} user={user} specRequests={specRequests} setSpecRequests={setSpecRequests}/>}
-      {tab==="ai"&&<AICoach geminiKey={geminiKey} timetable={timetable} subtopicData={subtopicData} grades={grades} tests={tests}/>}
+      {tab==="ai"&&<AICoach groqKey={groqKey} timetable={timetable} subtopicData={subtopicData} grades={grades} tests={tests}/>}
     </div>
   </div>;
 }
