@@ -1402,7 +1402,7 @@ function App(){
       {tab==="timetable"&&<Timetable timetable={timetable} setTimetable={setTimetable} tests={tests} setTests={setTests} groqKey={groqKey} geminiKey={geminiKey} aiProvider={aiProvider} getProgress={getProgress} subtopicData={subtopicData} setShowSettings={setShowSettings}/>}
       {tab==="grades"&&<Grades grades={grades} setGrades={setGrades} getProgress={getProgress} assignedSubjectIds={assignedSubjectIds}/>}
       {tab==="spec"&&<SpecTracker expSubj={expSubj} setExpSubj={setExpSubj} expTopic={expTopic} setExpTopic={setExpTopic} getVal={getVal} setVal={setVal} getProgress={getProgress} assignedSubjectIds={assignedSubjectIds} user={user} specRequests={specRequests} setSpecRequests={setSpecRequests}/>}
-      {tab==="ai"&&<AICoach groqKey={groqKey} geminiKey={geminiKey} aiProvider={aiProvider} subtopicData={subtopicData} tests={tests} chats={chats} setChats={setChats}/>
+      {tab==="ai"&&<AICoach groqKey={groqKey} geminiKey={geminiKey} aiProvider={aiProvider} subtopicData={subtopicData} tests={tests} chats={chats} setChats={setChats}/>}
       {tab==="log"&&<RevisionLogger revisionLog={revisionLog} setRevisionLog={setRevisionLog} assignedSubjectIds={assignedSubjectIds}/>}
     </div>
   </div>;
