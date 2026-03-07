@@ -34,11 +34,11 @@
   const auth = getAuth(app);
 
   window.__firebase = {
-    async register(username, password) {
+    async register(username, password, yearGroup) {
       const email = username.trim().toLowerCase() + "@gcsetracker.app";
       const cred = await createUserWithEmailAndPassword(auth, email, password);
-      await setDoc(doc(db, "users", cred.user.uid), { username: username.trim().toLowerCase(), timetable:{}, spec:{}, grades:{}, tests:[], groqKey:"", openrouterKey:"", aiProvider:"groq", specRequests:[], chats:[], revisionLog:[] });
-      return { uid: cred.user.uid, username: username.trim().toLowerCase() };
+      await setDoc(doc(db, "users", cred.user.uid), { username: username.trim().toLowerCase(), yearGroup: yearGroup||"10", timetable:{}, spec:{}, grades:{}, tests:[], groqKey:"", openrouterKey:"", aiProvider:"groq", specRequests:[], chats:[], revisionLog:[] });
+      return { uid: cred.user.uid, username: username.trim().toLowerCase(), yearGroup: yearGroup||"10" };
     },
     async login(username, password) {
       const email = username.trim().toLowerCase() + "@gcsetracker.app";
@@ -261,8 +261,10 @@ async function callAI(aiConfig, prompt, systemPrompt){
 
 // ─── LOGIN ────────────────────────────────────────────────────────────────────
 function LoginScreen({onLogin}){
+  const [mode,setMode]=useState("login"); // "login" | "register"
   const [username,setUsername]=useState("");
   const [password,setPassword]=useState("");
+  const [yearGroup,setYearGroup]=useState("11");
   const [error,setError]=useState("");
   const [loading,setLoading]=useState(false);
   const [fbReady,setFbReady]=useState(!!window.__firebase);
@@ -284,36 +286,64 @@ function LoginScreen({onLogin}){
     return"Something went wrong. Please try again.";
   };
 
-  const handle=async(isRegister)=>{
+  const handle=async()=>{
     if(!username.trim()||!password.trim()){setError("Please enter a username and password.");return;}
     if(!fbReady){setError("Still connecting, please wait...");return;}
     setLoading(true);setError("");
     try{
-      if(isRegister){const res=await window.__firebase.register(username,password);onLogin(res.uid,res.username,{});}
-      else{const res=await window.__firebase.login(username,password);onLogin(res.uid,res.username,res.data);}
+      if(mode==="register"){
+        const res=await window.__firebase.register(username,password,yearGroup);
+        onLogin(res.uid,res.username,{yearGroup:res.yearGroup});
+      } else {
+        const res=await window.__firebase.login(username,password);
+        onLogin(res.uid,res.username,res.data);
+      }
     }catch(e){setError(friendly(e.code));}
     setLoading(false);
   };
 
+  const switchMode=(m)=>{setMode(m);setError("");};
+
   return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"var(--bg)"}}>
-    <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:16,padding:"40px 36px",width:"100%",maxWidth:380}}>
+    <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:16,padding:"40px 36px",width:"100%",maxWidth:400}}>
       <div style={{textAlign:"center",marginBottom:28}}>
         <div style={{fontSize:40,marginBottom:10}}>📋</div>
         <div style={{fontSize:20,fontWeight:700,color:"var(--text)",fontFamily:"var(--mono)"}}>GCSE Revision Tracker</div>
-        <div style={{fontSize:11,color:"var(--text3)",marginTop:4,letterSpacing:2,textTransform:"uppercase",fontFamily:"var(--mono)"}}>Sign in or create an account</div>
       </div>
-      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+
+      {/* Mode toggle */}
+      <div style={{display:"flex",background:"var(--bg4)",borderRadius:10,padding:4,marginBottom:24,gap:4}}>
+        {[["login","Log In"],["register","Register"]].map(([m,label])=>
+          <button key={m} onClick={()=>switchMode(m)} style={{flex:1,padding:"8px",borderRadius:7,border:"none",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"var(--font)",background:mode===m?"var(--bg2)":"transparent",color:mode===m?"var(--text)":"var(--text3)",boxShadow:mode===m?"0 1px 4px rgba(0,0,0,0.2)":"none",transition:"all 0.15s"}}>{label}</button>
+        )}
+      </div>
+
+      <div style={{display:"flex",flexDirection:"column",gap:14}}>
         <div>
           <div style={{fontSize:11,color:"var(--text3)",marginBottom:5,fontFamily:"var(--mono)",textTransform:"uppercase",letterSpacing:1}}>Username</div>
-          <input value={username} onChange={e=>setUsername(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle(false)} placeholder="e.g. bob123" style={S.input} autoComplete="username"/>
+          <input value={username} onChange={e=>setUsername(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle()} placeholder="e.g. bob123" style={S.input} className="tracker-input" autoComplete="username"/>
         </div>
         <div>
           <div style={{fontSize:11,color:"var(--text3)",marginBottom:5,fontFamily:"var(--mono)",textTransform:"uppercase",letterSpacing:1}}>Password</div>
-          <input type="password" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle(false)} placeholder="at least 6 characters" style={S.input} autoComplete="current-password"/>
+          <input type="password" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle()} placeholder="at least 6 characters" style={S.input} className="tracker-input" autoComplete={mode==="register"?"new-password":"current-password"}/>
         </div>
+
+        {/* Year group — only on register */}
+        {mode==="register"&&<div>
+          <div style={{fontSize:11,color:"var(--text3)",marginBottom:8,fontFamily:"var(--mono)",textTransform:"uppercase",letterSpacing:1}}>Your year group</div>
+          <div style={{display:"flex",gap:10}}>
+            {[["10","Year 10","📘","Still preparing — GCSEs next year"],["11","Year 11","🎓","Taking GCSEs this year"]].map(([val,label,icon,sub])=>
+              <button key={val} onClick={()=>setYearGroup(val)} style={{flex:1,padding:"12px 10px",borderRadius:10,border:`2px solid ${yearGroup===val?"var(--accent)":"var(--border)"}`,background:yearGroup===val?"rgba(79,142,255,0.1)":"var(--bg3)",cursor:"pointer",transition:"all 0.15s",fontFamily:"var(--font)",textAlign:"center"}}>
+                <div style={{fontSize:22,marginBottom:4}}>{icon}</div>
+                <div style={{fontSize:13,fontWeight:700,color:yearGroup===val?"var(--accent)":"var(--text)"}}>{label}</div>
+                <div style={{fontSize:10,color:"var(--text3)",marginTop:3,lineHeight:1.4}}>{sub}</div>
+              </button>
+            )}
+          </div>
+        </div>}
+
         {error&&<div style={{fontSize:12,color:"var(--red)",background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:7,padding:"8px 12px",fontFamily:"var(--mono)"}}>{error}</div>}
-        <button onClick={()=>handle(false)} disabled={loading} style={{...S.btnBlue,opacity:loading?0.6:1,marginTop:4}}>{loading?"Loading...":"Log In"}</button>
-        <button onClick={()=>handle(true)} disabled={loading} style={{background:"transparent",border:"1px solid #334155",borderRadius:8,color:"var(--text2)",padding:"11px",fontSize:14,fontFamily:"inherit",cursor:"pointer",opacity:loading?0.6:1}}>Register new account</button>
+        <button onClick={handle} disabled={loading} style={{...S.btnBlue,opacity:loading?0.6:1,marginTop:4}}>{loading?"Loading...":mode==="register"?"Create account":"Log In"}</button>
       </div>
       <div style={{fontSize:10,color:"var(--text3)",textAlign:"center",marginTop:20,fontFamily:"var(--mono)",lineHeight:1.6}}>Passwords cannot be reset or viewed by anyone — choose one you can remember.</div>
     </div>
@@ -709,7 +739,7 @@ function Timetable({timetable,setTimetable,tests,setTests,groqKey,openrouterKey,
 
 // ─── AI COACH ──────────────────────────────────────────────────────────────────
 function genId(){return"c"+Date.now()+"_"+Math.random().toString(36).substr(2,9);}
-function AICoach({groqKey,openrouterKey,aiProvider,subtopicData,tests,chats,setChats}){
+function AICoach({groqKey,openrouterKey,aiProvider,subtopicData,tests,chats,setChats,yearGroup}){
   const [activeChatId,setActiveChatId]=useState(null);
   const [input,setInput]=useState("");
   const [loading,setLoading]=useState(false);
@@ -749,13 +779,17 @@ function AICoach({groqKey,openrouterKey,aiProvider,subtopicData,tests,chats,setC
     return"Student RAG data:\n"+ragSummary+"\n\nUpcoming tests: "+testsList;
   };
 
+  const coachSystemPrompt=yearGroup==="11"
+    ?"You are a focused, encouraging GCSE revision coach. The student is in Year 11 and taking their GCSEs very soon — keep advice direct, exam-focused and specific. Help them prioritise and stay calm under pressure. Ensure factual correctness. Keep responses concise."
+    :"You are a supportive, friendly GCSE revision coach. The student is in Year 10, so there's still time — be encouraging without being alarmist. Help them build strong habits and solid understanding. Ensure factual correctness. Keep responses concise.";
+
   const send=async()=>{
     if(!input.trim())return;
     if(!activeChatId){
       const id=genId();
       const userMsg=input.trim();
       setInput("");
-      const welcome={role:"assistant",text:"Hi! I'm your AI study coach. Ask me anything — revision tips, topic explanations, exam technique, or anything GCSE-related. I can see your RAG data to give personalised advice."};
+      const welcome={role:"assistant",text:yearGroup==="11"?"Hi! I'm your AI study coach. Your GCSEs are coming up — ask me anything and I'll give you focused, practical advice tailored to where you are right now.":"Hi! I'm your AI study coach. Ask me anything — revision tips, topic explanations, exam technique, or anything GCSE-related. We've got time to build this up properly."};
       const userMsgObj={role:"user",text:userMsg};
       const newChat={id,name:userMsg.slice(0,32)+(userMsg.length>32?"...":""),messages:[welcome,userMsgObj]};
       setChats(p=>[...(p||[]),newChat]);
@@ -770,7 +804,7 @@ function AICoach({groqKey,openrouterKey,aiProvider,subtopicData,tests,chats,setC
       const ctx=buildContext();
       const prompt=ctx+"\n\nStudent: "+userMsg;
       try{
-        const reply=await callAI(aiConfig3,prompt,"You are a friendly, encouraging GCSE revision coach. Keep responses concise and accurate. This is for real exam-prep — ensure factual correctness.");
+        const reply=await callAI(aiConfig3,prompt,coachSystemPrompt);
         setChats(p=>(p||[]).map(c=>c.id===id?{...c,messages:[...c.messages,{role:"assistant",text:reply}]}:c));
       }catch(e){
         setChats(p=>(p||[]).map(c=>c.id===id?{...c,messages:[...c.messages,{role:"assistant",text:"Failed to connect to AI provider. Check your API key in AI Setup."}]}:c));
@@ -792,7 +826,7 @@ function AICoach({groqKey,openrouterKey,aiProvider,subtopicData,tests,chats,setC
     const history=messages.map(m=>(m.role==="user"?"Student":"Coach")+": "+m.text).join("\n");
     const prompt=ctx+"\n\nConversation so far:\n"+history+"\nStudent: "+userMsg;
     try{
-      const reply=await callAI(aiConfig5,prompt,"You are a friendly, encouraging GCSE revision coach. Keep responses concise and accurate. This is for real exam-prep — ensure factual correctness.");
+      const reply=await callAI(aiConfig5,prompt,coachSystemPrompt);
       updateChat(activeChatId,c=>{
         const nm=[...c.messages,{role:"assistant",text:reply}];
         const name=c.name==="New chat"?userMsg.slice(0,32)+(userMsg.length>32?"...":""):c.name;
@@ -1411,11 +1445,59 @@ function PomodoroTimer({onClose,assignedSubjectIds,setRevisionLog}){
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
-function Dashboard({assignedSubjectIds,getProgress,grades,tests,revisionLog,weeklyGoalMins,setWeeklyGoalMins}){
+function Dashboard({assignedSubjectIds,getProgress,grades,tests,revisionLog,weeklyGoalMins,setWeeklyGoalMins,aiConfig,subtopicData,yearGroup}){
   const [editingGoal,setEditingGoal]=useState(false);
   const [goalInput,setGoalInput]=useState(String(Math.round(weeklyGoalMins/60)));
   const [isMobile,setIsMobile]=useState(window.innerWidth<=640);
   useEffect(()=>{const h=()=>setIsMobile(window.innerWidth<=640);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
+
+  // ── Exam countdown ────────────────────────────────────────────────────────
+  const GCSE_DATE_KEY="gcse_firstExamDate";
+  const [examDateStr,setExamDateStr]=useState(()=>localStorage.getItem(GCSE_DATE_KEY)||"2026-05-11");
+  const [editingExam,setEditingExam]=useState(false);
+  const [examInput,setExamInput]=useState(examDateStr);
+  const saveExamDate=()=>{localStorage.setItem(GCSE_DATE_KEY,examInput);setExamDateStr(examInput);setEditingExam(false);};
+  const examDaysLeft=(()=>{
+    const d=new Date(examDateStr+"T00:00:00");
+    const now=new Date();now.setHours(0,0,0,0);
+    return Math.max(0,Math.round((d-now)/(1000*60*60*24)));
+  })();
+  const examWeeks=Math.floor(examDaysLeft/7);
+  const examDaysRem=examDaysLeft%7;
+  const examUrgency=examDaysLeft<=14?"#f87171":examDaysLeft<=35?"#fbbf24":"var(--accent)";
+
+  // ── AI: What should I revise now? ────────────────────────────────────────
+  const [aiRevising,setAiRevising]=useState(false);
+  const [aiAdvice,setAiAdvice]=useState("");
+  const [aiAdviceErr,setAiAdviceErr]=useState("");
+  const getReviseAdvice=async()=>{
+    if(!aiConfig?.key){setAiAdviceErr("No AI key set — go to AI Setup in the menu first.");return;}
+    setAiRevising(true);setAiAdvice("");setAiAdviceErr("");
+    const now=new Date();
+    const hour=now.getHours();
+    const timeOfDay=hour<12?"morning":hour<17?"afternoon":"evening";
+    const dayName=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][now.getDay()];
+    const todayStr=now.toISOString().split("T")[0];
+    const todayMins=(revisionLog||[]).filter(e=>e.date.startsWith(todayStr)).reduce((a,e)=>a+(e.duration||0),0);
+    const todaySubjs=[...new Set((revisionLog||[]).filter(e=>e.date.startsWith(todayStr)).map(e=>e.subjectName))].join(", ")||"none";
+    const ragLines=SUBJECTS.filter(s=>assignedSubjectIds.includes(s.id)).map(s=>{
+      let total=0,green=0,amber=0,red=0;
+      s.topics.forEach(t=>t.subtopics.forEach((_,i)=>{
+        total++;const v=(subtopicData||{})[s.id+"__"+t.id+"__"+i]||{rag:"None"};
+        if(v.rag==="Green")green++;else if(v.rag==="Amber")amber++;else if(v.rag==="Red")red++;
+      }));
+      return `${s.name}: ${red} red, ${amber} amber, ${green}/${total} green`;
+    }).join("\n");
+    const todayN=new Date();todayN.setHours(0,0,0,0);
+    const upcomingTests=(tests||[]).filter(t=>new Date(t.date)>=todayN).sort((a,b)=>new Date(a.date)-new Date(b.date))
+      .slice(0,3).map(t=>{const days=Math.round((new Date(t.date)-todayN)/(1000*60*60*24));return`${t.subject} ${t.type} in ${days} days`;}).join(", ")||"none";
+    const prompt=`It is ${dayName} ${timeOfDay}. The student is in Year ${yearGroup||"11"}. They have revised ${todayMins} minutes today (subjects: ${todaySubjs}). GCSEs start in ${examDaysLeft} days.\n\nRAG data:\n${ragLines||"No RAG data yet"}\n\nUpcoming tests: ${upcomingTests}\n\nGive a SHORT, direct recommendation (3-5 sentences max) for exactly what they should revise RIGHT NOW in their next session. Be specific — name the subject and topic. Explain why briefly. ${yearGroup==="10"?"Be encouraging and focus on building good habits.":"Be direct and prioritise what will have the most exam impact."}`;
+    try{
+      const reply=await callAI(aiConfig,prompt,"You are a GCSE revision coach. Give a short, specific, actionable recommendation. No bullet points — write naturally. Max 5 sentences.");
+      setAiAdvice(reply);
+    }catch(e){setAiAdviceErr("Couldn't reach AI — check your key in AI Setup.");}
+    setAiRevising(false);
+  };
 
   const logs=revisionLog||[];
   const fmtMins=m=>{if(!m||m===0)return"0m";if(m>=60){const h=Math.floor(m/60);const r=m%60;return h+"h"+(r>0?" "+r+"m":"");}return m+"m";};
@@ -1442,9 +1524,48 @@ function Dashboard({assignedSubjectIds,getProgress,grades,tests,revisionLog,week
   const subjectsWithSpec=visibleSubjects.filter(s=>SUBJECTS.find(x=>x.id===s.id));
   const totalMins=logs.reduce((a,e)=>a+(e.duration||0),0);
 
+  const isY11=(yearGroup||"10")==="11";
+  const Y10_MESSAGES=["Building the foundations — your future self will thank you.","Every topic you cover now is one less to panic about next year.","Year 10 is your head start. Use it well.","Consistent effort now makes Year 11 so much easier."];
+  const Y11_MESSAGES=["It's not about being perfect — it's about being prepared.","Every session counts. You've got this.","The work you put in now shows up in the exam hall.","Exams are coming. So is your best performance."];
+  const motivMsg=(isY11?Y11_MESSAGES:Y10_MESSAGES)[Math.floor(new Date().getDate()%(isY11?Y11_MESSAGES.length:Y10_MESSAGES.length))];
+
   return <div>
     <div style={S.sectionHeader}>📊 Overview</div>
-    <p style={{color:"var(--text3)",fontSize:12,marginBottom:20,marginTop:4}}>Your revision at a glance.</p>
+
+    {/* Year-aware motivational banner */}
+    <div style={{background:isY11?"rgba(248,113,113,0.06)":"rgba(79,142,255,0.06)",border:`1px solid ${isY11?"rgba(248,113,113,0.2)":"rgba(79,142,255,0.15)"}`,borderRadius:10,padding:"12px 16px",marginBottom:20,display:"flex",alignItems:"center",gap:10}}>
+      <span style={{fontSize:20}}>{isY11?"🎯":"📘"}</span>
+      <div>
+        <div style={{fontSize:11,color:isY11?"var(--red)":"var(--accent)",fontWeight:700,textTransform:"uppercase",letterSpacing:1,fontFamily:"var(--mono)",marginBottom:2}}>Year {yearGroup}</div>
+        <div style={{fontSize:12,color:"var(--text2)",lineHeight:1.5}}>{motivMsg}</div>
+      </div>
+    </div>
+
+    {/* Exam countdown — Year 11 only */}
+    {isY11&&<div style={{background:`linear-gradient(135deg,${examUrgency}18,${examUrgency}08)`,border:`1px solid ${examUrgency}44`,borderRadius:12,padding:"16px 20px",marginBottom:20,display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
+      <div style={{display:"flex",alignItems:"center",gap:14}}>
+        <div style={{fontSize:32}}>🎓</div>
+        <div>
+          <div style={{fontSize:11,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1.5,fontFamily:"var(--mono)",marginBottom:3}}>First GCSE exam</div>
+          <div style={{display:"flex",alignItems:"baseline",gap:6,flexWrap:"wrap"}}>
+            <span style={{fontSize:28,fontWeight:800,color:examUrgency,fontFamily:"var(--mono)",lineHeight:1}}>{examDaysLeft}</span>
+            <span style={{fontSize:14,color:"var(--text2)",fontWeight:600}}>days away</span>
+            {examDaysLeft>0&&<span style={{fontSize:12,color:"var(--text3)"}}>({examWeeks>0?examWeeks+"w ":""}{examDaysRem>0?examDaysRem+"d":""})</span>}
+          </div>
+          <div style={{fontSize:11,color:"var(--text3)",marginTop:3}}>{new Date(examDateStr+"T00:00:00").toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</div>
+        </div>
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        {!editingExam
+          ?<button onClick={()=>{setExamInput(examDateStr);setEditingExam(true);}} style={{...S.btn,fontSize:11,padding:"4px 10px"}}>✏️ Change date</button>
+          :<div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+            <input type="date" value={examInput} onChange={e=>setExamInput(e.target.value)} style={{...S.specDate,fontSize:12,padding:"5px 8px"}}/>
+            <button onClick={saveExamDate} style={{...S.btnBlue,fontSize:11,padding:"5px 12px"}}>Save</button>
+            <button onClick={()=>setEditingExam(false)} style={{...S.btn,fontSize:11,padding:"5px 8px"}}>✕</button>
+          </div>
+        }
+      </div>
+    </div>}
 
     {/* Stats strip */}
     <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
@@ -1482,6 +1603,27 @@ function Dashboard({assignedSubjectIds,getProgress,grades,tests,revisionLog,week
         <div style={{height:"100%",width:`${weekPct}%`,background:weekPct>=100?"var(--green)":weekPct>=60?"var(--amber)":"var(--accent)",borderRadius:99,transition:"width 0.5s ease"}}/>
       </div>
       {weekPct>=100&&<div style={{fontSize:11,color:"var(--green)",marginTop:8,fontWeight:600}}>🎉 Weekly goal reached!</div>}
+    </div>
+
+    {/* What should I revise now? */}
+    <div style={{...S.card,marginBottom:20,border:aiAdvice?"1px solid rgba(79,142,255,0.3)":"1px solid var(--border)"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+        <div>
+          <div style={S.cardTitle}>What should I revise now?</div>
+          <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>AI picks the best topic for this moment based on your RAG data, upcoming tests and today's session.</div>
+        </div>
+        <button onClick={getReviseAdvice} disabled={aiRevising} style={{...S.btnBlue,padding:"9px 18px",fontSize:13,opacity:aiRevising?0.6:1,flexShrink:0,whiteSpace:"nowrap"}}>
+          {aiRevising?"Thinking...":"✨ Ask AI"}
+        </button>
+      </div>
+      {aiAdviceErr&&<div style={{marginTop:12,fontSize:12,color:"var(--red)",background:"rgba(248,113,113,0.08)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:8,padding:"10px 14px"}}>{aiAdviceErr}</div>}
+      {aiAdvice&&<div style={{marginTop:14}}>
+        <div style={{background:"var(--bg4)",border:"1px solid var(--border)",borderRadius:8,padding:"14px 16px",fontSize:13,color:"var(--text)",lineHeight:1.7}}>{aiAdvice}</div>
+        <div style={{display:"flex",gap:8,marginTop:10}}>
+          <button onClick={getReviseAdvice} style={{...S.btn,fontSize:11,padding:"4px 12px"}}>↺ Refresh</button>
+          <button onClick={()=>{setAiAdvice("");setAiAdviceErr("");}} style={{...S.btn,fontSize:11,padding:"4px 12px"}}>✕ Clear</button>
+        </div>
+      </div>}
     </div>
 
     {/* Upcoming tests */}
@@ -1798,6 +1940,8 @@ function App(){
   const [isMobileNav,setIsMobileNav]=useState(window.innerWidth<=640);
   const [weeklyGoalMins,setWeeklyGoalMinsRaw]=useState(()=>parseInt(localStorage.getItem('gcse_weeklyGoal')||'600'));
   const setWeeklyGoalMins=v=>{setWeeklyGoalMinsRaw(v);localStorage.setItem('gcse_weeklyGoal',String(v));};
+  const [yearGroup,setYearGroupRaw]=useState("11");
+  const [showYearModal,setShowYearModal]=useState(false);
   const saveTimer=useRef(null);
   const menuRef=useRef(null);
   const tabMenuRef=useRef(null);
@@ -1882,6 +2026,9 @@ function App(){
               setGradesRaw(snap.grades||{});setTestsRaw(snap.tests||[]);setGroqKeyRaw(snap.groqKey||"");
               setOpenrouterKeyRaw(snap.openrouterKey||"");setAiProviderRaw(snap.aiProvider||"groq");
               setSpecRequestsRaw(snap.specRequests||[]);setChatsRaw(snap.chats||[]);setRevisionLogRaw(snap.revisionLog||[]);
+              const yg=snap.yearGroup||"";setYearGroupRaw(yg);
+              if(!yg) setTimeout(()=>setShowYearModal(true),400); // slight delay so app renders first
+              if(!localStorage.getItem('gcse_weeklyGoal')&&yg){const dg=yg==="10"?300:600;setWeeklyGoalMinsRaw(dg);localStorage.setItem('gcse_weeklyGoal',String(dg));}
               setUser({uid:fbUser.uid,username:snap.username||fbUser.email.replace("@gcsetracker.app","")});
             }
           }catch(e){console.error(e);}
@@ -1939,16 +2086,28 @@ function App(){
     }
   };
 
+  const setYearGroup=async(yg)=>{
+    setYearGroupRaw(yg);
+    if(user&&window.__firebase)await window.__firebase.saveData(user.uid,{yearGroup:yg});
+  };
+
   const handleLogin=(uid,username,data)=>{
     setTimetableRaw(data.timetable||{});setSubtopicDataRaw(data.spec||{});
     setGradesRaw(data.grades||{});setTestsRaw(data.tests||[]);setGroqKeyRaw(data.groqKey||"");
     setOpenrouterKeyRaw(data.openrouterKey||"");setAiProviderRaw(data.aiProvider||"groq");
     setSpecRequestsRaw(data.specRequests||[]);setChatsRaw(data.chats||[]);setRevisionLogRaw(data.revisionLog||[]);
+    const yg=data.yearGroup||"";
+    setYearGroupRaw(yg);
+    // Set sensible default weekly goal if user hasn't customised it yet
+    if(!localStorage.getItem('gcse_weeklyGoal')&&yg){
+      const defaultGoal=yg==="10"?300:600;
+      setWeeklyGoalMinsRaw(defaultGoal);localStorage.setItem('gcse_weeklyGoal',String(defaultGoal));
+    }
     setUser({uid,username});
   };
   const handleLogout=async()=>{
     await window.__firebase.logout();
-    setUser(null);setTimetableRaw({});setSubtopicDataRaw({});setGradesRaw({});setTestsRaw([]);setGroqKeyRaw("");setOpenrouterKeyRaw("");setAiProviderRaw("groq");setSpecRequestsRaw([]);setChatsRaw([]);setRevisionLogRaw([]);
+    setUser(null);setTimetableRaw({});setSubtopicDataRaw({});setGradesRaw({});setTestsRaw([]);setGroqKeyRaw("");setOpenrouterKeyRaw("");setAiProviderRaw("groq");setSpecRequestsRaw([]);setChatsRaw([]);setRevisionLogRaw([]);setYearGroupRaw("11");
   };
 
   const getVal=(sId,tId,i)=>subtopicData[`${sId}__${tId}__${i}`]||{coverage:"Not covered",rag:"None",date:""};
@@ -1968,6 +2127,38 @@ function App(){
   return <div style={S.root}>
     {showSettings&&<Settings groqKey={groqKey} setGroqKey={setGroqKey} openrouterKey={openrouterKey} setOpenrouterKey={setOpenrouterKey} aiProvider={aiProvider} setAiProvider={setAiProvider} onClose={()=>setShowSettings(false)}/>}
     {showShortcuts&&<ShortcutsModal onClose={()=>setShowShortcuts(false)}/>}
+
+    {/* Year group edit modal */}
+    {showYearModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.82)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:16,padding:28,width:"100%",maxWidth:380}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+          <div style={{fontSize:15,fontWeight:700,color:"var(--text)"}}>🎓 {yearGroup?"Change Year Group":"What year are you in?"}</div>
+          {yearGroup&&<button onClick={()=>setShowYearModal(false)} style={{...S.btn,padding:"4px 10px"}}>✕</button>}
+        </div>
+        {!yearGroup&&<p style={{fontSize:12,color:"var(--text3)",marginBottom:20,lineHeight:1.6}}>We need this to personalise your dashboard, AI coach, and weekly goal. You can change it anytime from the menu.</p>}
+        {yearGroup&&<p style={{fontSize:12,color:"var(--text3)",marginBottom:20,lineHeight:1.5}}>Changing year group updates your exam countdown, AI coach tone, and dashboard messaging.</p>}
+        <div style={{display:"flex",gap:10,marginBottom:yearGroup?20:0}}>
+          {[["10","Year 10","📘","GCSEs next year (2027)"],["11","Year 11","🎓","GCSEs this year (2026)"]].map(([val,label,icon,sub])=>
+            <button key={val} onClick={async()=>{
+              const newYg=val;
+              setYearGroupRaw(newYg);
+              if(user&&window.__firebase)await window.__firebase.saveData(user.uid,{yearGroup:newYg});
+              if(!localStorage.getItem('gcse_weeklyGoal')){
+                const dg=newYg==="10"?300:600;
+                setWeeklyGoalMinsRaw(dg);localStorage.setItem('gcse_weeklyGoal',String(dg));
+              }
+              setShowYearModal(false);
+            }}
+              style={{flex:1,padding:"14px 10px",borderRadius:10,border:`2px solid ${yearGroup===val?"var(--accent)":"var(--border)"}`,background:yearGroup===val?"rgba(79,142,255,0.1)":"var(--bg3)",cursor:"pointer",fontFamily:"var(--font)",textAlign:"center",transition:"all 0.15s"}}>
+              <div style={{fontSize:24,marginBottom:6}}>{icon}</div>
+              <div style={{fontSize:13,fontWeight:700,color:yearGroup===val?"var(--accent)":"var(--text)"}}>{label}</div>
+              <div style={{fontSize:10,color:"var(--text3)",marginTop:4,lineHeight:1.4}}>{sub}</div>
+              {yearGroup===val&&<div style={{fontSize:10,color:"var(--accent)",marginTop:6}}>✓ Current</div>}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>}
     <div style={S.header} className="app-header">
       <div style={S.headerInner} className="app-header-inner">
         <div style={{display:"flex",alignItems:"center",gap:12}}>
@@ -1988,8 +2179,10 @@ function App(){
               <div style={{padding:"6px 12px 8px",borderBottom:"1px solid var(--border)",marginBottom:4}}>
                 <div style={{fontSize:11,color:"var(--text3)",fontFamily:"var(--mono)"}}>Signed in as</div>
                 <div style={{fontSize:12,fontWeight:700,color:"var(--text)"}}>{user.username}</div>
+                <div style={{fontSize:11,color:"var(--text3)",marginTop:2}}>Year {yearGroup}</div>
               </div>
               <MenuBtn icon="🤖" label="AI Setup" onClick={()=>{setShowSettings(true);setShowMenu(false);}}/>
+              <MenuBtn icon="🎓" label="Change year group" onClick={()=>{setShowYearModal(true);setShowMenu(false);}}/>
               <div style={{borderTop:"1px solid var(--border)",margin:"4px 0"}}/>
               <MenuBtn icon="⬇️" label="Download data" onClick={()=>{downloadData();setShowMenu(false);}}/>
               <label style={{display:"flex",alignItems:"center",gap:8,padding:"7px 12px",borderRadius:8,cursor:"pointer",fontSize:13,color:"var(--text2)",transition:"background 0.12s"}}
@@ -2036,11 +2229,11 @@ function App(){
     </div>
     <div style={S.body} className="app-body">
       {showPomodoro&&<PomodoroTimer onClose={()=>setShowPomodoro(false)} assignedSubjectIds={assignedSubjectIds} revisionLog={revisionLog} setRevisionLog={setRevisionLog}/>}
-      {tab==="dashboard"&&<Dashboard assignedSubjectIds={assignedSubjectIds} getProgress={getProgress} grades={grades} tests={tests} revisionLog={revisionLog} weeklyGoalMins={weeklyGoalMins} setWeeklyGoalMins={setWeeklyGoalMins}/>}
+      {tab==="dashboard"&&<Dashboard assignedSubjectIds={assignedSubjectIds} getProgress={getProgress} grades={grades} tests={tests} revisionLog={revisionLog} weeklyGoalMins={weeklyGoalMins} setWeeklyGoalMins={setWeeklyGoalMins} aiConfig={{provider:aiProvider,key:aiProvider==="openrouter"?openrouterKey:groqKey}} subtopicData={subtopicData} yearGroup={yearGroup}/>}
       {tab==="timetable"&&<Timetable timetable={timetable} setTimetable={setTimetable} tests={tests} setTests={setTests} groqKey={groqKey} openrouterKey={openrouterKey} aiProvider={aiProvider} getProgress={getProgress} subtopicData={subtopicData} setShowSettings={setShowSettings}/>}
       {tab==="grades"&&<Grades grades={grades} setGrades={setGrades} getProgress={getProgress} assignedSubjectIds={assignedSubjectIds}/>}
       {tab==="spec"&&<SpecTracker expSubj={expSubj} setExpSubj={setExpSubj} expTopic={expTopic} setExpTopic={setExpTopic} getVal={getVal} setVal={setVal} getProgress={getProgress} assignedSubjectIds={assignedSubjectIds} user={user} specRequests={specRequests} setSpecRequests={setSpecRequests} aiConfig={{provider:aiProvider,key:aiProvider==="openrouter"?openrouterKey:groqKey}}/>}
-      {tab==="ai"&&<AICoach groqKey={groqKey} openrouterKey={openrouterKey} aiProvider={aiProvider} subtopicData={subtopicData} tests={tests} chats={chats} setChats={setChats}/>}
+      {tab==="ai"&&<AICoach groqKey={groqKey} openrouterKey={openrouterKey} aiProvider={aiProvider} subtopicData={subtopicData} tests={tests} chats={chats} setChats={setChats} yearGroup={yearGroup}/>}
       {tab==="log"&&<RevisionLogger revisionLog={revisionLog} setRevisionLog={setRevisionLog} assignedSubjectIds={assignedSubjectIds}/>}
     </div>
   </div>;
