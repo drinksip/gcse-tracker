@@ -928,6 +928,19 @@ function GradeCard({s,showProgress,getGrade,setGrade,getProgress}){
     const gPct=prog?Math.round((prog.green/prog.total)*100):0;
     const aPct=prog?Math.round((prog.amber/prog.total)*100):0;
     const actualColor=getActualColor(s.color);
+
+    // Past papers state
+    const [showPapers,setShowPapers]=useState(false);
+    const [addingPaper,setAddingPaper]=useState(false);
+    const [np,setNp]=useState({name:"",date:"",score:"",total:""});
+    const papers=g.papers||[];
+    const addPaper=()=>{
+      if(!np.score&&!np.name)return;
+      setGrade(s.id,"papers",[...papers,{...np,id:Date.now().toString()}]);
+      setNp({name:"",date:"",score:"",total:""});setAddingPaper(false);
+    };
+    const removePaper=id=>setGrade(s.id,"papers",papers.filter(p=>p.id!==id));
+
     return <div style={{...S.card,borderLeft:`3px solid ${actualColor}`}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -961,6 +974,57 @@ function GradeCard({s,showProgress,getGrade,setGrade,getProgress}){
         </div>
       </div>}
       <textarea placeholder="Notes..." value={g.notes} onChange={e=>setGrade(s.id,"notes",e.target.value)} style={S.notesArea} rows={2}/>
+
+      {/* Past papers section */}
+      {showProgress&&<div style={{marginTop:12}}>
+        <button onClick={()=>setShowPapers(p=>!p)} style={{...S.btn,width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:12,padding:"7px 12px"}}>
+          <span>📝 Past Papers{papers.length>0?` (${papers.length})`:""}</span>
+          <span>{showPapers?"▲":"▼"}</span>
+        </button>
+        {showPapers&&<div style={{marginTop:8,background:"var(--bg4)",borderRadius:8,padding:"10px 12px",border:"1px solid var(--border)"}}>
+          {papers.length===0&&!addingPaper&&<div style={{fontSize:12,color:"var(--text3)",padding:"4px 0 8px"}}>No papers logged yet.</div>}
+          {[...papers].sort((a,b)=>b.date.localeCompare(a.date)).map(p=>{
+            const pct=p.total&&p.score?Math.round((parseInt(p.score)/parseInt(p.total))*100):null;
+            const pColor=pct===null?"var(--text2)":pct>=70?"var(--green)":pct>=50?"var(--amber)":"var(--red)";
+            return <div key={p.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:"1px solid var(--border)"}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:12,color:"var(--text)",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.name||"Unnamed paper"}</div>
+                {p.date&&<div style={{fontSize:11,color:"var(--text3)",marginTop:1}}>{new Date(p.date+"T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}</div>}
+              </div>
+              {pct!==null&&<div style={{textAlign:"right",flexShrink:0}}>
+                <div style={{fontSize:14,fontWeight:700,color:pColor,fontFamily:"var(--mono)"}}>{p.score}/{p.total}</div>
+                <div style={{fontSize:10,color:pColor}}>{pct}%</div>
+              </div>}
+              <button onClick={()=>removePaper(p.id)} style={{...S.btn,padding:"2px 7px",fontSize:10,color:"var(--text3)",flexShrink:0}}>✕</button>
+            </div>;
+          })}
+          {addingPaper&&<div style={{marginTop:10,paddingTop:10,borderTop:"1px solid var(--border)"}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+              <div style={{gridColumn:"1 / -1"}}>
+                <div style={{fontSize:10,color:"var(--text3)",marginBottom:3,textTransform:"uppercase",letterSpacing:1}}>Paper name</div>
+                <input value={np.name} onChange={e=>setNp(p=>({...p,name:e.target.value}))} placeholder="e.g. AQA Nov 2023 Paper 1" style={{...S.input,fontSize:12}} className="tracker-input"/>
+              </div>
+              <div>
+                <div style={{fontSize:10,color:"var(--text3)",marginBottom:3,textTransform:"uppercase",letterSpacing:1}}>Score</div>
+                <input type="number" value={np.score} onChange={e=>setNp(p=>({...p,score:e.target.value}))} placeholder="72" style={{...S.input,fontSize:12}} className="tracker-input"/>
+              </div>
+              <div>
+                <div style={{fontSize:10,color:"var(--text3)",marginBottom:3,textTransform:"uppercase",letterSpacing:1}}>Out of</div>
+                <input type="number" value={np.total} onChange={e=>setNp(p=>({...p,total:e.target.value}))} placeholder="100" style={{...S.input,fontSize:12}} className="tracker-input"/>
+              </div>
+              <div style={{gridColumn:"1 / -1"}}>
+                <div style={{fontSize:10,color:"var(--text3)",marginBottom:3,textTransform:"uppercase",letterSpacing:1}}>Date sat</div>
+                <input type="date" value={np.date} onChange={e=>setNp(p=>({...p,date:e.target.value}))} style={{...S.specDate,width:"100%",padding:"7px 8px",fontSize:12}}/>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:6}}>
+              <button onClick={addPaper} style={{...S.btnBlue,fontSize:12,padding:"6px 14px"}}>✓ Save paper</button>
+              <button onClick={()=>{setAddingPaper(false);setNp({name:"",date:"",score:"",total:""});}} style={{...S.btn,fontSize:12}}>Cancel</button>
+            </div>
+          </div>}
+          {!addingPaper&&<button onClick={()=>setAddingPaper(true)} style={{...S.btn,width:"100%",marginTop:papers.length>0?10:4,fontSize:12,textAlign:"center"}}>＋ Add paper</button>}
+        </div>}
+      </div>}
     </div>;
 }
 
@@ -1346,11 +1410,170 @@ function PomodoroTimer({onClose,assignedSubjectIds,setRevisionLog}){
   </div>;
 }
 
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+function Dashboard({assignedSubjectIds,getProgress,grades,tests,revisionLog,weeklyGoalMins,setWeeklyGoalMins}){
+  const [editingGoal,setEditingGoal]=useState(false);
+  const [goalInput,setGoalInput]=useState(String(Math.round(weeklyGoalMins/60)));
+  const [isMobile,setIsMobile]=useState(window.innerWidth<=640);
+  useEffect(()=>{const h=()=>setIsMobile(window.innerWidth<=640);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
+
+  const logs=revisionLog||[];
+  const fmtMins=m=>{if(!m||m===0)return"0m";if(m>=60){const h=Math.floor(m/60);const r=m%60;return h+"h"+(r>0?" "+r+"m":"");}return m+"m";};
+
+  // Streak — count consecutive days ending today (or yesterday if none today)
+  const streak=(()=>{
+    const days=new Set(logs.map(e=>e.date.split("T")[0]));
+    let s=0;const d=new Date();
+    while(true){const ds=d.toISOString().split("T")[0];if(days.has(ds)){s++;d.setDate(d.getDate()-1);}else break;}
+    return s;
+  })();
+
+  // Week progress (Mon–Sun)
+  const weekStart=(()=>{const d=new Date();d.setDate(d.getDate()-((d.getDay()+6)%7));d.setHours(0,0,0,0);return d;})();
+  const weekMins=logs.filter(e=>new Date(e.date)>=weekStart).reduce((a,e)=>a+(e.duration||0),0);
+  const weekPct=Math.min(100,weeklyGoalMins>0?Math.round((weekMins/weeklyGoalMins)*100):0);
+
+  // Upcoming tests
+  const today=new Date();today.setHours(0,0,0,0);
+  const upcoming=(tests||[]).filter(t=>new Date(t.date)>=today).sort((a,b)=>new Date(a.date)-new Date(b.date)).slice(0,5);
+  const daysUntil=dateStr=>{const d=new Date(dateStr);d.setHours(0,0,0,0);return Math.round((d-today)/(1000*60*60*24));};
+
+  const visibleSubjects=ALL_SUBJECTS.filter(s=>assignedSubjectIds.includes(s.id));
+  const subjectsWithSpec=visibleSubjects.filter(s=>SUBJECTS.find(x=>x.id===s.id));
+  const totalMins=logs.reduce((a,e)=>a+(e.duration||0),0);
+
+  return <div>
+    <div style={S.sectionHeader}>📊 Overview</div>
+    <p style={{color:"var(--text3)",fontSize:12,marginBottom:20,marginTop:4}}>Your revision at a glance.</p>
+
+    {/* Stats strip */}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
+      {[
+        {icon:streak>0?"🔥":"😴",value:streak,unit:"day streak",color:streak>2?"#fb923c":streak>0?"var(--amber)":"var(--text3)"},
+        {icon:"⏱",value:fmtMins(totalMins),unit:"total revised",color:"var(--accent)"},
+        {icon:"📚",value:assignedSubjectIds.length,unit:"subjects",color:"var(--green)"},
+      ].map(st=><div key={st.unit} style={{...S.card,textAlign:"center",padding:"14px 10px",margin:0}}>
+        <div style={{fontSize:22,marginBottom:4}}>{st.icon}</div>
+        <div style={{fontSize:16,fontWeight:700,color:st.color,fontFamily:"var(--mono)"}}>{st.value}</div>
+        <div style={{fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1,marginTop:2}}>{st.unit}</div>
+      </div>)}
+    </div>
+
+    {/* Weekly goal */}
+    <div style={{...S.card,marginBottom:20}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}}>
+        <div style={S.cardTitle}>Weekly Study Goal</div>
+        {!editingGoal
+          ?<button onClick={()=>{setGoalInput(String(Math.round(weeklyGoalMins/60)));setEditingGoal(true);}} style={{...S.btn,fontSize:11,padding:"3px 10px"}}>Edit</button>
+          :<div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+            <select value={goalInput} onChange={e=>setGoalInput(e.target.value)} style={{...S.sel,height:"auto",width:"auto",fontSize:12}}>
+              {["3","5","7","10","12","15","20"].map(h=><option key={h} value={h}>{h}h / week</option>)}
+            </select>
+            <button onClick={()=>{setWeeklyGoalMins(parseInt(goalInput)*60);setEditingGoal(false);}} style={{...S.btnBlue,fontSize:11,padding:"5px 14px"}}>Save</button>
+            <button onClick={()=>setEditingGoal(false)} style={{...S.btn,fontSize:11,padding:"5px 8px"}}>✕</button>
+          </div>
+        }
+      </div>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+        <span style={{fontSize:12,color:"var(--text2)"}}>{fmtMins(weekMins)} this week</span>
+        <span style={{fontSize:12,color:"var(--text3)"}}>{weekPct}% of {fmtMins(weeklyGoalMins)} goal</span>
+      </div>
+      <div style={{height:8,background:"var(--border)",borderRadius:99,overflow:"hidden"}}>
+        <div style={{height:"100%",width:`${weekPct}%`,background:weekPct>=100?"var(--green)":weekPct>=60?"var(--amber)":"var(--accent)",borderRadius:99,transition:"width 0.5s ease"}}/>
+      </div>
+      {weekPct>=100&&<div style={{fontSize:11,color:"var(--green)",marginTop:8,fontWeight:600}}>🎉 Weekly goal reached!</div>}
+    </div>
+
+    {/* Upcoming tests */}
+    {upcoming.length>0&&<div style={{...S.card,marginBottom:20}}>
+      <div style={S.cardTitle}>Upcoming Tests</div>
+      <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:12}}>
+        {upcoming.map(t=>{
+          const days=daysUntil(t.date);
+          const urgency=days<=3?"#f87171":days<=7?"#fbbf24":"#4ade80";
+          const subj=ALL_SUBJECTS.find(s=>s.name===t.subject);
+          return <div key={t.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 12px",background:"var(--bg4)",borderRadius:8,border:`1px solid ${urgency}33`}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:18,flexShrink:0}}>{subj?.emoji||"📝"}</span>
+              <div style={{minWidth:0}}>
+                <div style={{fontSize:13,color:"var(--text)",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{t.subject}</div>
+                <div style={{fontSize:11,color:"var(--text3)"}}>{t.type} · {new Date(t.date).toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</div>
+              </div>
+            </div>
+            <span style={{fontSize:13,fontWeight:700,color:urgency,fontFamily:"var(--mono)",flexShrink:0,marginLeft:8}}>{days===0?"Today!":days===1?"Tomorrow":days+"d"}</span>
+          </div>;
+        })}
+      </div>
+    </div>}
+
+    {/* Spec progress */}
+    {subjectsWithSpec.length>0&&<div>
+      <div style={{...S.cardTitle,marginBottom:12}}>Spec Progress</div>
+      <div style={{display:"grid",gap:10}}>
+        {subjectsWithSpec.map(s=>{
+          const prog=getProgress(s.id);
+          const gPct=Math.round((prog.green/prog.total)*100);
+          const aPct=Math.round((prog.amber/prog.total)*100);
+          const actualColor=getActualColor(s.color);
+          const g=grades[s.id]||{};
+          const nextTest=upcoming.find(t=>t.subject===s.name);
+          const days=nextTest?daysUntil(nextTest.date):null;
+          // last paper score
+          const papers=[...(g.papers||[])].sort((a,b)=>b.date.localeCompare(a.date));
+          const lp=papers[0];
+          const lpPct=lp&&lp.total&&lp.score?Math.round((parseInt(lp.score)/parseInt(lp.total))*100):null;
+          return <div key={s.id} style={{...S.card,margin:0,padding:"14px 16px",borderLeft:`3px solid ${actualColor}`}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:10}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:18}}>{s.emoji}</span>
+                <div>
+                  <div style={{fontWeight:600,color:"var(--text)",fontSize:13}}>{s.name}</div>
+                  <div style={{color:"var(--text3)",fontSize:11}}>{s.board}</div>
+                </div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
+                {g.target&&<div style={{textAlign:"center"}}>
+                  <div style={{fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1}}>Target</div>
+                  <div style={{fontSize:15,fontWeight:700,color:actualColor,fontFamily:"var(--mono)"}}>{g.target}</div>
+                </div>}
+                {lpPct!==null&&<div style={{textAlign:"center"}}>
+                  <div style={{fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1}}>Last paper</div>
+                  <div style={{fontSize:15,fontWeight:700,color:lpPct>=70?"var(--green)":lpPct>=50?"var(--amber)":"var(--red)",fontFamily:"var(--mono)"}}>{lpPct}%</div>
+                </div>}
+                {days!==null&&<div style={{textAlign:"center"}}>
+                  <div style={{fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1}}>Test in</div>
+                  <div style={{fontSize:14,fontWeight:700,color:days<=3?"#f87171":days<=7?"#fbbf24":"#4ade80",fontFamily:"var(--mono)"}}>{days===0?"Today!":days+"d"}</div>
+                </div>}
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1}}>Green</div>
+                  <div style={{fontSize:15,fontWeight:700,color:actualColor,fontFamily:"var(--mono)"}}>{gPct}%</div>
+                </div>
+              </div>
+            </div>
+            <div style={{height:6,background:"var(--border)",borderRadius:99,overflow:"hidden",display:"flex"}}>
+              <div style={{width:`${gPct}%`,background:"#4ade80",height:"100%",transition:"width 0.4s"}}/>
+              <div style={{width:`${aPct}%`,background:"#fbbf24",height:"100%",transition:"width 0.4s"}}/>
+            </div>
+            <div style={{display:"flex",gap:10,marginTop:5,alignItems:"center"}}>
+              {[["🟢",prog.green,"#4ade80"],["🟡",prog.amber,"#fbbf24"],["🔴",prog.red,"#f87171"]].map(([icon,n,c])=><span key={icon} style={{fontSize:11,color:c}}>{icon} {n}</span>)}
+              <span style={{fontSize:11,color:"var(--text3)",marginLeft:"auto"}}>{prog.total} subtopics</span>
+            </div>
+          </div>;
+        })}
+      </div>
+    </div>}
+
+    {visibleSubjects.length===0&&<div style={{...S.card,color:"var(--text3)",fontSize:13}}>No subjects assigned yet — head to the Timetable tab to get started.</div>}
+  </div>;
+}
+
 // ─── REVISION LOGGER ─────────────────────────────────────────────────────────
 function RevisionLogger({revisionLog,setRevisionLog,assignedSubjectIds}){
   const [showAdd,setShowAdd]=useState(false);
   const [form,setForm]=useState({subject:"",date:new Date().toISOString().split("T")[0],duration:"30",note:"",type:"Self-study"});
   const [filterSubj,setFilterSubj]=useState("all");
+  const [isMobile,setIsMobile]=useState(window.innerWidth<=640);
+  useEffect(()=>{const h=()=>setIsMobile(window.innerWidth<=640);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
 
   const addEntry=()=>{
     if(!form.subject||!form.date)return;
@@ -1374,6 +1597,15 @@ function RevisionLogger({revisionLog,setRevisionLog,assignedSubjectIds}){
   logs.forEach(e=>{subjMins[e.subject]=(subjMins[e.subject]||0)+(e.duration||0);});
   const topSubj=Object.entries(subjMins).sort((a,b)=>b[1]-a[1])[0];
   const topSubjData=topSubj?ALL_SUBJECTS.find(s=>s.id===topSubj[0]):null;
+  const maxSubjMins=Object.values(subjMins).length>0?Math.max(...Object.values(subjMins)):1;
+
+  // Streak
+  const streak=(()=>{
+    const days=new Set(logs.map(e=>e.date.split("T")[0]));
+    let s=0;const d=new Date();
+    while(true){const ds=d.toISOString().split("T")[0];if(days.has(ds)){s++;d.setDate(d.getDate()-1);}else break;}
+    return s;
+  })();
 
   // Group by date
   const grouped={};
@@ -1391,17 +1623,39 @@ function RevisionLogger({revisionLog,setRevisionLog,assignedSubjectIds}){
     <p style={{color:"var(--text3)",fontSize:12,marginBottom:20,marginTop:4}}>Track every revision session to see patterns and stay accountable.</p>
 
     {/* Stats strip */}
-    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
+    <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(4,1fr)",gap:12,marginBottom:20}}>
       {[
         {label:"Total time",value:fmtMins(totalMins),icon:"⏱",color:"var(--accent)"},
         {label:"Today",value:fmtMins(todayMins),icon:"📅",color:"var(--green)"},
         {label:"Top subject",value:topSubjData?topSubjData.emoji+" "+topSubjData.name:"—",icon:"🏆",color:"var(--amber)"},
+        {label:"Day streak",value:streak,icon:streak>0?"🔥":"😴",color:streak>2?"#fb923c":streak>0?"var(--amber)":"var(--text3)"},
       ].map(st=><div key={st.label} style={{...S.card,textAlign:"center",padding:"14px 12px",margin:0}}>
         <div style={{fontSize:20,marginBottom:6}}>{st.icon}</div>
         <div style={{fontSize:16,fontWeight:700,color:st.color,marginBottom:2,fontFamily:"var(--mono)"}}>{st.value}</div>
         <div style={{fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1}}>{st.label}</div>
       </div>)}
     </div>
+
+    {/* Subject time breakdown */}
+    {Object.keys(subjMins).length>0&&<div style={{...S.card,marginBottom:20}}>
+      <div style={S.cardTitle}>Time by Subject</div>
+      <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:10}}>
+        {Object.entries(subjMins).sort((a,b)=>b[1]-a[1]).map(([id,mins])=>{
+          const s=ALL_SUBJECTS.find(x=>x.id===id);
+          const pct=Math.round((mins/maxSubjMins)*100);
+          const actualColor=getActualColor(s?.color||"#8a9ab8");
+          return <div key={id}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+              <span style={{fontSize:12,color:"var(--text2)"}}>{s?.emoji} {s?.name||id}</span>
+              <span style={{fontSize:12,color:"var(--text3)",fontFamily:"var(--mono)"}}>{fmtMins(mins)}</span>
+            </div>
+            <div style={{height:6,background:"var(--border)",borderRadius:99,overflow:"hidden"}}>
+              <div style={{height:"100%",width:`${pct}%`,background:actualColor,borderRadius:99,transition:"width 0.4s"}}/>
+            </div>
+          </div>;
+        })}
+      </div>
+    </div>}
 
     {/* Add form */}
     {showAdd&&<div style={{...S.card,marginBottom:20,border:"1px solid rgba(79,142,255,0.3)",background:"var(--bg3)"}}>
@@ -1493,6 +1747,7 @@ function MenuBtn({icon,label,onClick,danger}){
 function ShortcutsModal({onClose}){
   const shortcuts=[
     ["P","Open / close Pomodoro timer"],
+    ["0","Go to Overview (Dashboard)"],
     ["1","Go to Timetable tab"],
     ["2","Go to Grades tab"],
     ["3","Go to Spec Tracker tab"],
@@ -1520,7 +1775,7 @@ function ShortcutsModal({onClose}){
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 function App(){
   const [user,setUser]=useState(null);
-  const [tab,setTab]=useState("timetable");
+  const [tab,setTab]=useState("dashboard");
   const [timetable,setTimetableRaw]=useState({});
   const [subtopicData,setSubtopicDataRaw]=useState({});
   const [grades,setGradesRaw]=useState({});
@@ -1541,6 +1796,8 @@ function App(){
   const [showShortcuts,setShowShortcuts]=useState(false);
   const [showTabMenu,setShowTabMenu]=useState(false);
   const [isMobileNav,setIsMobileNav]=useState(window.innerWidth<=640);
+  const [weeklyGoalMins,setWeeklyGoalMinsRaw]=useState(()=>parseInt(localStorage.getItem('gcse_weeklyGoal')||'600'));
+  const setWeeklyGoalMins=v=>{setWeeklyGoalMinsRaw(v);localStorage.setItem('gcse_weeklyGoal',String(v));};
   const saveTimer=useRef(null);
   const menuRef=useRef(null);
   const tabMenuRef=useRef(null);
@@ -1564,6 +1821,7 @@ function App(){
       if(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA"||e.target.tagName==="SELECT")return;
       if(e.key==="Escape"){setShowPomodoro(false);setShowMenu(false);setShowSettings(false);setShowShortcuts(false);setShowTabMenu(false);}
       else if(e.key==="p"||e.key==="P")setShowPomodoro(p=>!p);
+      else if(e.key==="0")setTab("dashboard");
       else if(e.key==="1")setTab("timetable");
       else if(e.key==="2")setTab("grades");
       else if(e.key==="3")setTab("spec");
@@ -1756,11 +2014,11 @@ function App(){
                 <span style={{height:2,background:"var(--text2)",borderRadius:2,display:"block"}}/>
                 <span style={{height:2,background:"var(--text2)",borderRadius:2,display:"block"}}/>
               </span>
-              <span style={{color:"var(--accent)"}}>{[["timetable","📅 Timetable"],["grades","📊 Grades"],["spec","📖 Spec Tracker"],["ai","🤖 AI Coach"],["log","📓 Rev. Log"]].find(([id])=>id===tab)?.[1]||"Menu"}</span>
+              <span style={{color:"var(--accent)"}}>{[["dashboard","📊 Overview"],["timetable","📅 Timetable"],["grades","🏆 Grades"],["spec","📖 Spec Tracker"],["ai","🤖 AI Coach"],["log","📓 Rev. Log"]].find(([id])=>id===tab)?.[1]||"Menu"}</span>
               <span style={{color:"var(--text3)",fontSize:11,marginLeft:2}}>{showTabMenu?"▲":"▼"}</span>
             </button>
             {showTabMenu&&<div style={{position:"absolute",left:0,top:"calc(100% + 2px)",background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:12,padding:6,zIndex:120,boxShadow:"0 8px 32px rgba(0,0,0,0.4)",minWidth:200}}>
-              {[["timetable","📅","Timetable"],["grades","📊","Grades"],["spec","📖","Spec Tracker"],["ai","🤖","AI Coach"],["log","📓","Rev. Log"]].map(([id,emoji,label])=>
+              {[["dashboard","📊","Overview"],["timetable","📅","Timetable"],["grades","🏆","Grades"],["spec","📖","Spec Tracker"],["ai","🤖","AI Coach"],["log","📓","Rev. Log"]].map(([id,emoji,label])=>
                 <button key={id} onClick={()=>{setTab(id);setShowTabMenu(false);}}
                   style={{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"10px 14px",borderRadius:8,border:"none",background:tab===id?"rgba(79,142,255,0.12)":"transparent",cursor:"pointer",fontFamily:"var(--font)",fontSize:13,fontWeight:tab===id?700:500,color:tab===id?"var(--accent)":"var(--text2)",textAlign:"left"}}>
                   <span>{emoji}</span><span>{label}</span>
@@ -1770,7 +2028,7 @@ function App(){
             </div>}
           </div>
         : <div style={S.tabBar} className="app-tab-bar">
-            {[["timetable","📅 Timetable"],["grades","📊 Grades"],["spec","📖 Spec Tracker"],["ai","🤖 AI Coach"],["log","📓 Rev. Log"]].map(([id,label])=>
+            {[["dashboard","📊 Overview"],["timetable","📅 Timetable"],["grades","🏆 Grades"],["spec","📖 Spec Tracker"],["ai","🤖 AI Coach"],["log","📓 Rev. Log"]].map(([id,label])=>
               <button key={id} className="app-tab-btn" style={{...S.tabBtn,...(tab===id?S.tabActive:{})}} onClick={()=>setTab(id)}>{label}</button>
             )}
           </div>
@@ -1778,6 +2036,7 @@ function App(){
     </div>
     <div style={S.body} className="app-body">
       {showPomodoro&&<PomodoroTimer onClose={()=>setShowPomodoro(false)} assignedSubjectIds={assignedSubjectIds} revisionLog={revisionLog} setRevisionLog={setRevisionLog}/>}
+      {tab==="dashboard"&&<Dashboard assignedSubjectIds={assignedSubjectIds} getProgress={getProgress} grades={grades} tests={tests} revisionLog={revisionLog} weeklyGoalMins={weeklyGoalMins} setWeeklyGoalMins={setWeeklyGoalMins}/>}
       {tab==="timetable"&&<Timetable timetable={timetable} setTimetable={setTimetable} tests={tests} setTests={setTests} groqKey={groqKey} openrouterKey={openrouterKey} aiProvider={aiProvider} getProgress={getProgress} subtopicData={subtopicData} setShowSettings={setShowSettings}/>}
       {tab==="grades"&&<Grades grades={grades} setGrades={setGrades} getProgress={getProgress} assignedSubjectIds={assignedSubjectIds}/>}
       {tab==="spec"&&<SpecTracker expSubj={expSubj} setExpSubj={setExpSubj} expTopic={expTopic} setExpTopic={setExpTopic} getVal={getVal} setVal={setVal} getProgress={getProgress} assignedSubjectIds={assignedSubjectIds} user={user} specRequests={specRequests} setSpecRequests={setSpecRequests} aiConfig={{provider:aiProvider,key:aiProvider==="openrouter"?openrouterKey:groqKey}}/>}
