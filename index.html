@@ -955,6 +955,12 @@ function Grades({grades,setGrades,getProgress,assignedSubjectIds}){
 // ─── SPEC TRACKER ─────────────────────────────────────────────────────────────
 function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getProgress,assignedSubjectIds,user,specRequests,setSpecRequests,aiConfig}){
   const toggleTopic=id=>setExpTopic(p=>({...p,[id]:!p[id]}));
+  const [isMobile,setIsMobile]=useState(window.innerWidth<=640);
+  useEffect(()=>{
+    const h=()=>setIsMobile(window.innerWidth<=640);
+    window.addEventListener("resize",h);
+    return()=>window.removeEventListener("resize",h);
+  },[]);
   const [reqBoard,setReqBoard]=useState({});
   const [gizmoSearchModal,setGizmoSearchModal]=useState(null);
   const gizmoSearch=(q)=>{
@@ -1094,37 +1100,67 @@ function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getP
                     <span style={{color:"var(--text3)",fontSize:14}}>{tOpen?"▲":"▼"}</span>
                   </div>
                 </button>
-                {tOpen&&<div style={{marginTop:8,overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
-                  <div style={{minWidth:520}}>
-                  <div style={S.specHeader}>
-                    <span style={{flex:3}}>Subtopic</span><span style={{flex:2}}>Coverage</span>
-                    <span style={{flex:1,textAlign:"center"}}>RAG</span><span style={{flex:2}}>Last revised</span>
-                  </div>
-                  {t.subtopics.map((st,i)=>{
-                    const v=getVal(s.id,t.id,i);
-                    return <div key={i} style={{...S.specRow,background:RAG_BG[v.rag]||"transparent"}}>
-                      <span style={{flex:3,color:"#c8d5e8",fontSize:12,paddingRight:8}}>{st}</span>
-                      <select value={v.coverage} onChange={e=>setVal(s.id,t.id,i,"coverage",e.target.value)} style={{...S.specSel,flex:2}}>
-                        {COVERAGE_OPTIONS.map(o=><option key={o} value={o}>{o}</option>)}
-                      </select>
-                      <div style={{flex:1,display:"flex",justifyContent:"center",gap:4}}>
-                        {RAG_OPTIONS.map(r=><button key={r} title={r} onClick={()=>setVal(s.id,t.id,i,"rag",r)} style={{
-                          width:14,height:14,borderRadius:"50%",background:RAG_COLORS[r],
-                          border:v.rag===r?"2px solid white":"2px solid transparent",
-                          cursor:"pointer",padding:0,flexShrink:0,
-                          boxShadow:v.rag===r?`0 0 6px ${RAG_COLORS[r]}`:"none"
-                        }}/>)}
+                {tOpen&&<div style={{marginTop:8}}>
+                  {isMobile
+                    ? <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                        {t.subtopics.map((st,i)=>{
+                          const v=getVal(s.id,t.id,i);
+                          return <div key={i} style={{background:RAG_BG[v.rag]||"var(--bg4)",border:"1px solid var(--border)",borderRadius:8,padding:"10px 12px"}}>
+                            <div style={{fontSize:12,color:"#c8d5e8",fontWeight:600,marginBottom:8,lineHeight:1.4}}>{st}</div>
+                            <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                              <select value={v.coverage} onChange={e=>setVal(s.id,t.id,i,"coverage",e.target.value)} style={{...S.specSel,fontSize:11,flex:1,minWidth:100}}>
+                                {COVERAGE_OPTIONS.map(o=><option key={o} value={o}>{o}</option>)}
+                              </select>
+                              <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                                {RAG_OPTIONS.map(r=><button key={r} title={r} onClick={()=>setVal(s.id,t.id,i,"rag",r)} style={{
+                                  width:18,height:18,borderRadius:"50%",background:RAG_COLORS[r],
+                                  border:v.rag===r?"2px solid white":"2px solid transparent",
+                                  cursor:"pointer",padding:0,flexShrink:0,
+                                  boxShadow:v.rag===r?`0 0 6px ${RAG_COLORS[r]}`:"none"
+                                }}/>)}
+                              </div>
+                              <input type="date" value={v.date} onChange={e=>setVal(s.id,t.id,i,"date",e.target.value)} style={{...S.specDate,fontSize:11,flex:1,minWidth:110}}/>
+                              <div style={{display:"flex",gap:4}}>
+                                <button onClick={()=>gizmoSearch(s.name+" "+st+" GCSE")} title="Open Gizmo"
+                                  style={{display:"flex",alignItems:"center",justifyContent:"center",width:26,height:26,background:"rgba(124,58,237,0.12)",border:"1px solid rgba(124,58,237,0.25)",borderRadius:6,fontSize:12,cursor:"pointer",color:"#a78bfa",padding:0}}>🃏</button>
+                                <button title="Generate AI notes" onClick={()=>handleGizmoNotes(s,t,st,v.rag)}
+                                  style={{display:"flex",alignItems:"center",justifyContent:"center",width:26,height:26,background:"rgba(79,142,255,0.1)",border:"1px solid rgba(79,142,255,0.2)",borderRadius:6,fontSize:12,cursor:"pointer",color:"var(--accent)",padding:0}}>✦</button>
+                              </div>
+                            </div>
+                          </div>;
+                        })}
                       </div>
-                      <input type="date" value={v.date} onChange={e=>setVal(s.id,t.id,i,"date",e.target.value)} style={{...S.specDate,flex:2}}/>
-                      <div style={{display:"flex",gap:3,flexShrink:0}}>
-                        <button onClick={()=>gizmoSearch(s.name+" "+st+" GCSE")}
-                          title="Copy topic name & open Gizmo"
-                          style={{display:"flex",alignItems:"center",justifyContent:"center",width:22,height:22,background:"rgba(124,58,237,0.12)",border:"1px solid rgba(124,58,237,0.25)",borderRadius:4,fontSize:10,cursor:"pointer",color:"#a78bfa",padding:0}}>🃏</button>
-                        {<button title="Generate AI notes for Gizmo" onClick={()=>handleGizmoNotes(s,t,st,v.rag)} style={{display:"flex",alignItems:"center",justifyContent:"center",width:22,height:22,background:"rgba(79,142,255,0.1)",border:"1px solid rgba(79,142,255,0.2)",borderRadius:4,fontSize:10,cursor:"pointer",color:"var(--accent)",padding:0}}>✦</button>}
+                    : <div>
+                        <div style={S.specHeader}>
+                          <span style={{flex:3}}>Subtopic</span><span style={{flex:2}}>Coverage</span>
+                          <span style={{flex:1,textAlign:"center"}}>RAG</span><span style={{flex:2}}>Last revised</span>
+                        </div>
+                        {t.subtopics.map((st,i)=>{
+                          const v=getVal(s.id,t.id,i);
+                          return <div key={i} style={{...S.specRow,background:RAG_BG[v.rag]||"transparent"}}>
+                            <span style={{flex:3,color:"#c8d5e8",fontSize:12,paddingRight:8}}>{st}</span>
+                            <select value={v.coverage} onChange={e=>setVal(s.id,t.id,i,"coverage",e.target.value)} style={{...S.specSel,flex:2}}>
+                              {COVERAGE_OPTIONS.map(o=><option key={o} value={o}>{o}</option>)}
+                            </select>
+                            <div style={{flex:1,display:"flex",justifyContent:"center",gap:4}}>
+                              {RAG_OPTIONS.map(r=><button key={r} title={r} onClick={()=>setVal(s.id,t.id,i,"rag",r)} style={{
+                                width:14,height:14,borderRadius:"50%",background:RAG_COLORS[r],
+                                border:v.rag===r?"2px solid white":"2px solid transparent",
+                                cursor:"pointer",padding:0,flexShrink:0,
+                                boxShadow:v.rag===r?`0 0 6px ${RAG_COLORS[r]}`:"none"
+                              }}/>)}
+                            </div>
+                            <input type="date" value={v.date} onChange={e=>setVal(s.id,t.id,i,"date",e.target.value)} style={{...S.specDate,flex:2}}/>
+                            <div style={{display:"flex",gap:3,flexShrink:0}}>
+                              <button onClick={()=>gizmoSearch(s.name+" "+st+" GCSE")} title="Copy topic name & open Gizmo"
+                                style={{display:"flex",alignItems:"center",justifyContent:"center",width:22,height:22,background:"rgba(124,58,237,0.12)",border:"1px solid rgba(124,58,237,0.25)",borderRadius:4,fontSize:10,cursor:"pointer",color:"#a78bfa",padding:0}}>🃏</button>
+                              <button title="Generate AI notes for Gizmo" onClick={()=>handleGizmoNotes(s,t,st,v.rag)}
+                                style={{display:"flex",alignItems:"center",justifyContent:"center",width:22,height:22,background:"rgba(79,142,255,0.1)",border:"1px solid rgba(79,142,255,0.2)",borderRadius:4,fontSize:10,cursor:"pointer",color:"var(--accent)",padding:0}}>✦</button>
+                            </div>
+                          </div>;
+                        })}
                       </div>
-                    </div>;
-                  })}
-                  </div>
+                  }
                 </div>}
               </div>;
             })}
