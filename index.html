@@ -74,7 +74,7 @@ const SUBJECTS = [
     { id:"m5", name:"Geometry & Measures", subtopics:["Angles in polygons","Circle theorems","Area & perimeter","Volume & surface area","Pythagoras theorem","Trigonometry (SOH CAH TOA)","Sine & cosine rule","Vectors","Transformations","Loci & constructions"] },
     { id:"m6", name:"Probability & Statistics", subtopics:["Basic probability","Tree diagrams","Venn diagrams","Frequency tables & averages","Cumulative frequency & box plots","Histograms","Scatter graphs & correlation"] },
   ]},
-  { id:"biology", name:"Biology", board:"AQA", color:"#34d399", emoji:"🧬", topics:[
+  { id:"biology", name:"Biology", selectorName:"Triple Biology", board:"AQA", color:"#34d399", emoji:"🧬", topics:[
     { id:"b1", name:"Cell Biology", subtopics:["Cell structure (prokaryotic/eukaryotic)","Cell division (mitosis & meiosis)","Cell transport (diffusion, osmosis, active transport)","Stem cells","Microscopy & cell size calculations"] },
     { id:"b2", name:"Organisation", subtopics:["Digestive system & enzymes","Heart & blood vessels","Blood components","Lungs & gas exchange","Plant tissues & transport","Transpiration"] },
     { id:"b3", name:"Infection & Response", subtopics:["Pathogens & disease","Immune response","Vaccination","Antibiotics & painkillers","Drug development & testing"] },
@@ -83,7 +83,7 @@ const SUBJECTS = [
     { id:"b6", name:"Inheritance & Evolution", subtopics:["DNA structure & protein synthesis","Genetic inheritance (Punnett squares)","Mutations","Natural selection & evolution","Classification","Extinction & biodiversity"] },
     { id:"b7", name:"Ecology", subtopics:["Food chains & webs","Sampling techniques","Carbon cycle","Water cycle","Biodiversity & conservation","Human impact on environment"] },
   ]},
-  { id:"chemistry", name:"Chemistry", board:"AQA", color:"var(--red)", emoji:"⚗️", topics:[
+  { id:"chemistry", name:"Chemistry", selectorName:"Triple Chemistry", board:"AQA", color:"var(--red)", emoji:"⚗️", topics:[
     { id:"c1", name:"Atomic Structure & the Periodic Table", subtopics:["Atomic structure (protons, neutrons, electrons)","Isotopes & relative atomic mass","Development of the periodic table","Electronic configuration","Metals & non-metals","Group 0, 1 & 7 properties","Transition metals"] },
     { id:"c2", name:"Bonding, Structure & Properties", subtopics:["Ionic bonding & structure","Covalent bonding (simple & giant)","Metallic bonding","Allotropes of carbon","Polymers","Nanoparticles"] },
     { id:"c3", name:"Quantitative Chemistry", subtopics:["Conservation of mass","Relative formula mass","Moles","Balancing equations","Percentage yield","Atom economy","Concentration calculations"] },
@@ -95,7 +95,7 @@ const SUBJECTS = [
     { id:"c9", name:"Chemistry of the Atmosphere", subtopics:["Evolution of the atmosphere","Greenhouse gases & climate change","Atmospheric pollutants"] },
     { id:"c10", name:"Using Resources", subtopics:["Finite & renewable resources","Potable water treatment","Lifecycle assessment","Corrosion & alloys","The Haber process & NPK fertilisers"] },
   ]},
-  { id:"physics", name:"Physics", board:"AQA", color:"var(--accent)", emoji:"⚡", topics:[
+  { id:"physics", name:"Physics", selectorName:"Triple Physics", board:"AQA", color:"var(--accent)", emoji:"⚡", topics:[
     { id:"p1", name:"Energy", subtopics:["Energy stores & transfers","Conservation of energy","Kinetic & potential energy calculations","Specific heat capacity","Power & efficiency","Renewable & non-renewable energy sources"] },
     { id:"p2", name:"Electricity", subtopics:["Circuit symbols & diagrams","Series & parallel circuits","Ohms law & resistance","I-V characteristics","Mains electricity & AC/DC","Power & energy calculations","Static electricity"] },
     { id:"p3", name:"Particle Model of Matter", subtopics:["States of matter & particle model","Density calculations","Internal energy & temperature","Specific latent heat","Gas pressure & temperature"] },
@@ -152,6 +152,21 @@ const SUBJECTS = [
     { id:"mu4", name:"Areas of Study 4: Fusions", subtopics:["Blues & jazz origins","Fusion genres (jazz-funk, Afrobeat etc.)","Set work: All Blues (Miles Davis)","Set work: Grace (Jeff Buckley)","Cross-cultural influences","Electric & electronic instruments"] },
     { id:"mu5", name:"Musical Elements & Notation", subtopics:["Melody, rhythm & metre","Harmony & tonality","Texture & structure","Timbre & dynamics","Reading & writing staff notation","Identifying musical devices"] },
     { id:"mu6", name:"Listening & Appraising", subtopics:["Unfamiliar piece analysis","Comparing pieces","Using musical vocabulary","Identifying instruments","Describing context & style","Exam technique & past papers"] },
+  ]},
+  { id:"combined_science", name:"Science", selectorName:"Science (Combined)", board:"AQA", color:"#60a5fa", emoji:"🔬", topics:[
+    { id:"csb1", name:"Biology: Cell Biology", subtopics:["Cell structure (prokaryotic & eukaryotic)","Differences between animal & plant cells","Cell division (mitosis)","Cell transport (diffusion, osmosis, active transport)","Microscopy & cell size calculations"] },
+    { id:"csb2", name:"Biology: Organisation", subtopics:["Digestive system & enzymes","Heart & blood vessels","Blood components","Lungs & gas exchange","Non-communicable diseases","Plant tissues & transport","Transpiration factors"] },
+    { id:"csb3", name:"Biology: Infection & Response", subtopics:["Pathogens & types of disease","Immune response (white blood cells)","Vaccination","Antibiotics & painkillers","Drug development & testing"] },
+    { id:"csb4", name:"Biology: Bioenergetics", subtopics:["Photosynthesis (equation & limiting factors)","Aerobic & anaerobic respiration","Exercise & the body's response"] },
+    { id:"csb5", name:"Biology: Homeostasis & Genetics", subtopics:["Nervous system & reflex arc","Hormonal coordination (including diabetes)","Reproductive hormones","DNA structure","Genetic inheritance (Punnett squares)","Natural selection & evolution","Biodiversity & ecosystems"] },
+    { id:"csc1", name:"Chemistry: Structure & Bonding", subtopics:["Atomic structure (protons, neutrons, electrons)","Isotopes & the periodic table","Ionic bonding & structure","Covalent bonding (simple & giant)","Metallic bonding","Polymers & nanoparticles"] },
+    { id:"csc2", name:"Chemistry: Reactions & Quantities", subtopics:["Conservation of mass & balancing equations","Relative formula mass & moles","Percentage yield & atom economy","Reactivity series & metal extraction","Acids, alkalis & neutralisation","Electrolysis"] },
+    { id:"csc3", name:"Chemistry: Rates, Energy & Organic", subtopics:["Factors affecting rate of reaction","Collision theory","Reversible reactions & equilibrium","Exothermic & endothermic reactions","Bond energy calculations","Crude oil, alkanes & fractional distillation","Cracking & alkenes"] },
+    { id:"csc4", name:"Chemistry: Analysis & Earth", subtopics:["Purity, formulations & chromatography","Tests for gases & ions","Evolution of the atmosphere","Greenhouse gases & climate change","Potable water & lifecycle assessment"] },
+    { id:"csp1", name:"Physics: Energy & Electricity", subtopics:["Energy stores, transfers & conservation","Kinetic & gravitational potential energy","Power, efficiency & specific heat capacity","Renewable & non-renewable energy sources","Series & parallel circuits","Ohm's law & resistance","Electrical power & domestic energy"] },
+    { id:"csp2", name:"Physics: Particle Model & Atomic", subtopics:["States of matter & density","Specific latent heat","Gas pressure & temperature","Atomic model & nuclear radiation","Alpha, beta & gamma decay","Half-life calculations","Background radiation & uses of radiation"] },
+    { id:"csp3", name:"Physics: Forces & Waves", subtopics:["Resultant forces & Newton's laws","Stopping distances & momentum","Work done, energy & Hooke's law","Pressure in fluids","Transverse & longitudinal waves","Reflection, refraction & the EM spectrum","Sound & ultrasound"] },
+    { id:"csp4", name:"Physics: Magnetism", subtopics:["Magnets & magnetic fields","Electromagnetism & the motor effect","Induced potential & generators","Transformers & the National Grid"] },
   ]},
 ];
 
@@ -239,16 +254,28 @@ const lastRevisedInfo=(date)=>{
 
 // ─── RESOURCE LINKS per subject ───────────────────────────────────────────────
 const RESOURCE_LINKS={
-  maths:       {sme:"https://www.savemyexams.com/gcse/maths/edexcel/",      pmt:"https://www.physicsandmathstutor.com/maths-revision/gcse-edexcel/"},
-  biology:     {sme:"https://www.savemyexams.com/gcse/biology/aqa/",        pmt:"https://www.physicsandmathstutor.com/biology-revision/gcse-aqa/"},
-  chemistry:   {sme:"https://www.savemyexams.com/gcse/chemistry/aqa/",      pmt:"https://www.physicsandmathstutor.com/chemistry-revision/gcse-aqa/"},
-  physics:     {sme:"https://www.savemyexams.com/gcse/physics/aqa/",        pmt:"https://www.physicsandmathstutor.com/physics-revision/gcse-aqa/"},
-  english_lang:{sme:"https://www.savemyexams.com/gcse/english-language/aqa/",pmt:"https://www.physicsandmathstutor.com/english-revision/gcse-aqa-english-language/"},
-  english_lit: {sme:"https://www.savemyexams.com/gcse/english-literature/aqa/",pmt:"https://www.physicsandmathstutor.com/english-revision/gcse-aqa-english-literature/"},
-  german:      {sme:"https://www.savemyexams.com/gcse/german/aqa/",         pmt:"https://www.physicsandmathstutor.com/german-revision/gcse-aqa/"},
-  geography:   {sme:"https://www.savemyexams.com/gcse/geography/aqa/",      pmt:"https://www.physicsandmathstutor.com/geography-revision/gcse-aqa/"},
-  cs:          {sme:"https://www.savemyexams.com/gcse/computer-science/ocr/",pmt:"https://www.physicsandmathstutor.com/computer-science-revision/gcse-ocr/"},
-  music:       {sme:"https://www.savemyexams.com/gcse/music/edexcel/",       pmt:"https://www.physicsandmathstutor.com/music-revision/gcse-edexcel/"},
+  maths:            {sme:"https://www.savemyexams.com/gcse/maths/edexcel/",           pmt:"https://www.physicsandmathstutor.com/maths-revision/gcse-edexcel/",
+                     ytChannels:["MathsGenie","Cognito"]},
+  biology:          {sme:"https://www.savemyexams.com/gcse/biology/aqa/",             pmt:"https://www.physicsandmathstutor.com/biology-revision/gcse-aqa/",
+                     ytChannels:["FreeScienceLessons","Cognito"]},
+  chemistry:        {sme:"https://www.savemyexams.com/gcse/chemistry/aqa/",           pmt:"https://www.physicsandmathstutor.com/chemistry-revision/gcse-aqa/",
+                     ytChannels:["FreeScienceLessons","Cognito"]},
+  physics:          {sme:"https://www.savemyexams.com/gcse/physics/aqa/",             pmt:"https://www.physicsandmathstutor.com/physics-revision/gcse-aqa/",
+                     ytChannels:["FreeScienceLessons","Cognito"]},
+  combined_science: {sme:"https://www.savemyexams.com/gcse/combined-science/aqa/",    pmt:"https://www.physicsandmathstutor.com/combined-science-revision/gcse-aqa/",
+                     ytChannels:["FreeScienceLessons","Cognito"]},
+  english_lang:     {sme:"https://www.savemyexams.com/gcse/english-language/aqa/",    pmt:"https://www.physicsandmathstutor.com/english-revision/gcse-aqa-english-language/",
+                     ytChannels:["Mr Salles Teaches English","Mr Bruff"]},
+  english_lit:      {sme:"https://www.savemyexams.com/gcse/english-literature/aqa/",  pmt:"https://www.physicsandmathstutor.com/english-revision/gcse-aqa-english-literature/",
+                     ytChannels:["Mr Salles Teaches English","Mr Bruff"]},
+  german:           {sme:"https://www.savemyexams.com/gcse/german/aqa/",              pmt:"https://www.physicsandmathstutor.com/german-revision/gcse-aqa/",
+                     ytChannels:["Herr Antrim","GCSE German"]},
+  geography:        {sme:"https://www.savemyexams.com/gcse/geography/aqa/",           pmt:"https://www.physicsandmathstutor.com/geography-revision/gcse-aqa/",
+                     ytChannels:["Geog with BuckleMyShoeBro","Geography Gang"]},
+  cs:               {sme:"https://www.savemyexams.com/gcse/computer-science/ocr/",    pmt:"https://www.physicsandmathstutor.com/computer-science-revision/gcse-ocr/",
+                     ytChannels:["Craig and Dave","Computer Science Tutor"]},
+  music:            {sme:"https://www.savemyexams.com/gcse/music/edexcel/",            pmt:"https://www.physicsandmathstutor.com/music-revision/gcse-edexcel/",
+                     ytChannels:["GCSE Music Theory","Music Theory Guy"]},
 };
 
 const S={
@@ -661,7 +688,7 @@ function Timetable({timetable,setTimetable,tests,setTests,groqKey,openrouterKey,
                     <div style={{fontSize:10,color:"var(--text3)",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{slot}</div>
                     {showSel&&<select multiple value={vals} onChange={e=>{const sel=Array.from(e.target.selectedOptions).map(o=>o.value);setSlot(day,slot,sel);}}
                       style={{...S.sel,height:"100px",width:"100%",fontSize:12,border:`1px solid ${borderCol}`,marginBottom:4}}>
-                      {ALL_SUBJECTS.map(s=>{const sel=vals.includes(s.id);const actualColor=getActualColor(s.color);return <option key={s.id} value={s.id} style={{color:sel?actualColor:"var(--text2)",background:sel?actualColor+"22":"var(--bg3)",fontWeight:sel?700:400}}>{s.emoji} {s.name}</option>;})}
+                      {ALL_SUBJECTS.map(s=>{const sel=vals.includes(s.id);const actualColor=getActualColor(s.color);return <option key={s.id} value={s.id} style={{color:sel?actualColor:"var(--text2)",background:sel?actualColor+"22":"var(--bg3)",fontWeight:sel?700:400}}>{s.emoji} {s.selectorName||s.name}</option>;})}
                     </select>}
                     {vals.length>0
                       ? <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
@@ -688,7 +715,7 @@ function Timetable({timetable,setTimetable,tests,setTests,groqKey,openrouterKey,
                 return <td key={slot} style={{...S.td,verticalAlign:"top"}}>
                   {showSel&&<select multiple value={vals} onChange={e=>{const sel=Array.from(e.target.selectedOptions).map(o=>o.value);setSlot(day,slot,sel);}}
                     style={{...S.sel,height:"112px",width:"100%",fontSize:12,border:`1px solid ${borderCol}`}}>
-                    {ALL_SUBJECTS.map(s=>{const sel=vals.includes(s.id);const actualColor=getActualColor(s.color);return <option key={s.id} value={s.id} style={{color:sel?actualColor:"var(--text2)",background:sel?actualColor+"22":"var(--bg3)",fontWeight:sel?700:400,padding:"4px 6px"}}>{s.emoji} {s.name}</option>;})}
+                    {ALL_SUBJECTS.map(s=>{const sel=vals.includes(s.id);const actualColor=getActualColor(s.color);return <option key={s.id} value={s.id} style={{color:sel?actualColor:"var(--text2)",background:sel?actualColor+"22":"var(--bg3)",fontWeight:sel?700:400,padding:"4px 6px"}}>{s.emoji} {s.selectorName||s.name}</option>;})}
                   </select>}
                   {vals.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:3,marginTop:showSel?6:0}}>
                     {vals.map(id=>{const s=ALL_SUBJECTS.find(x=>x.id===id);const actualColor=getActualColor(s.color);return s?<span key={id} style={{fontSize:11,background:actualColor+"22",color:actualColor,borderRadius:5,padding:"2px 7px",border:`2px solid ${actualColor}`}}>{s.emoji} {s.name}</span>:null;})}
@@ -1345,14 +1372,17 @@ function Grades({grades,setGrades,getProgress,assignedSubjectIds}){
 }
 
 // ─── RESOURCES MODAL ─────────────────────────────────────────────────────────
-function ResourcesModal({subj,topic,onClose,gizmoSearch,setResourcesModal}){
+function ResourcesModal({subj,topic,onClose,gizmoSearch}){
   const q=encodeURIComponent(subj.board+" GCSE "+subj.name+" "+topic.name);
   const links=RESOURCE_LINKS[subj.id]||{};
-  const yt1=`https://www.youtube.com/results?search_query=${q}+FreeScienceLessons`;
-  const yt2=`https://www.youtube.com/results?search_query=${q}+Cognito`;
-  const yt3=`https://www.youtube.com/results?search_query=${q}`;
+  const ytChannels=links.ytChannels||[];
+  const channelColors=["#f87171","#fb923c","#fbbf24","#34d399"];
+  const ytLinks=[
+    ...ytChannels.map((ch,i)=>[ch,`https://www.youtube.com/results?search_query=${q}+${encodeURIComponent(ch)}`,channelColors[i%channelColors.length]]),
+    ["General search",`https://www.youtube.com/results?search_query=${q}`,"#8a9ab8"],
+  ];
   return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",zIndex:400,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-    <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:16,padding:24,width:"100%",maxWidth:440}}>
+    <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:16,padding:24,width:"100%",maxWidth:440,maxHeight:"85vh",overflowY:"auto"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
         <div style={{fontSize:14,fontWeight:700,color:"var(--text)"}}>📚 Resources</div>
         <button onClick={onClose} style={{...S.btn,padding:"4px 10px"}}>✕</button>
@@ -1360,7 +1390,7 @@ function ResourcesModal({subj,topic,onClose,gizmoSearch,setResourcesModal}){
       <div style={{fontSize:12,color:"var(--text3)",marginBottom:16}}>{subj.name} · {topic.name}</div>
       <div style={{display:"flex",flexDirection:"column",gap:8}}>
         <div style={{fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1,fontFamily:"var(--mono)"}}>📺 YouTube</div>
-        {[["FreeScienceLessons",yt1,"#f87171"],["Cognito",yt2,"#fb923c"],["General search",yt3,"#8a9ab8"]].map(([label,url,col])=>
+        {ytLinks.map(([label,url,col])=>
           <a key={label} href={url} target="_blank" rel="noopener noreferrer"
             style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:8,background:"var(--bg3)",border:"1px solid var(--border)",textDecoration:"none"}}>
             <span style={{fontSize:18}}>▶</span>
@@ -1368,7 +1398,7 @@ function ResourcesModal({subj,topic,onClose,gizmoSearch,setResourcesModal}){
             <span style={{fontSize:10,color:col,fontFamily:"var(--mono)"}}>YouTube ↗</span>
           </a>
         )}
-        <div style={{fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1,fontFamily:"var(--mono)",marginTop:4}}>📝 Notes & Questions</div>
+        {(links.sme||links.pmt)&&<div style={{fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1,fontFamily:"var(--mono)",marginTop:4}}>📝 Notes & Questions</div>}
         {[links.sme&&["SaveMyExams",links.sme,"var(--accent)"],links.pmt&&["Physics & Maths Tutor",links.pmt,"#34d399"]].filter(Boolean).map(([label,url,col])=>
           <a key={label} href={url} target="_blank" rel="noopener noreferrer"
             style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:8,background:"var(--bg3)",border:"1px solid var(--border)",textDecoration:"none"}}>
@@ -2365,7 +2395,7 @@ function App(){
   },[]);
 
   const downloadData=()=>{
-    const data={timetable,spec:subtopicData,grades,tests,groqKey,openrouterKey,aiProvider,specRequests,chats,revisionLog,exportedAt:new Date().toISOString(),username:user?.username};
+    const data={timetable,spec:subtopicData,grades,tests,groqKey,openrouterKey,aiProvider,specRequests,chats,revisionLog,yearGroup,exportedAt:new Date().toISOString(),username:user?.username};
     const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
     const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="gcse-tracker-backup.json";a.click();
   };
@@ -2386,6 +2416,7 @@ function App(){
         if(d.specRequests)setSpecRequestsRaw(d.specRequests);
         if(d.chats)setChatsRaw(d.chats);
         if(d.revisionLog)setRevisionLogRaw(d.revisionLog);
+        if(d.yearGroup)setYearGroupRaw(d.yearGroup);
         if(user)saveToFirebase(user.uid,d.timetable||{},d.spec||{},d.grades||{},d.tests||[],d.groqKey||"",d.openrouterKey||"",d.aiProvider||"groq",d.specRequests||[],d.chats||[],d.revisionLog||[]);
         alert("Data restored successfully!");
       }catch(err){alert("Invalid backup file.");}
