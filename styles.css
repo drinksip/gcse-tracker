@@ -186,10 +186,6 @@ input:-webkit-autofill {
   .spec-header-row { flex-wrap: wrap; gap: 4px !important; }
   .spec-row { flex-wrap: wrap; gap: 4px !important; }
 
-  .ai-panel { flex-direction: column !important; height: auto !important; }
-  .ai-sidebar { width: 100% !important; border-right: none !important; border-bottom: 1px solid var(--border) !important; height: auto !important; max-height: 160px !important; }
-  .ai-main { height: 420px !important; }
-
   .chat-input-row { gap: 6px !important; }
   .chat-send-btn { padding: 8px 12px !important; font-size: 12px !important; }
 }

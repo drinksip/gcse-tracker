@@ -765,7 +765,16 @@ function AICoach({groqKey,openrouterKey,aiProvider,subtopicData,tests,chats,setC
     setLoading(false);
   };
 
+
+  const [showSidebar,setShowSidebar]=useState(true);
+  const [isMobile,setIsMobile]=useState(window.innerWidth<=640);
+  useEffect(()=>{
+    const handler=()=>setIsMobile(window.innerWidth<=640);
+    window.addEventListener("resize",handler);
+    return ()=>window.removeEventListener("resize",handler);
+  },[]);
   const sidebarStyle={width:200,borderRight:"1px solid #1e293b",display:"flex",flexDirection:"column",background:"var(--bg)",flexShrink:0};
+  const selectChat=(id)=>{setActiveChatId(id);setShowSidebar(false);};
 
   return <div>
     <div style={S.sectionHeader}>🤖 AI Study Coach</div>
@@ -773,7 +782,54 @@ function AICoach({groqKey,openrouterKey,aiProvider,subtopicData,tests,chats,setC
       Ask me anything about your revision. Chats are saved automatically.
       {!(aiProvider==="openrouter"?openrouterKey:groqKey)&&<span style={{color:"var(--red)"}}> (Add an AI key in AI Setup to use this)</span>}
     </p>
-    <div className="ai-panel" style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:10,display:"flex",height:500,overflow:"hidden"}}>
+
+    {/* Mobile: chat list view */}
+    <div className="ai-mobile-list" style={{display:isMobile&&showSidebar?"block":"none"}}>
+      <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:10,overflow:"hidden"}}>
+        <div style={{padding:"10px 14px",fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1,borderBottom:"1px solid #1e293b",display:"flex",justifyContent:"space-between",alignItems:"center",fontFamily:"var(--mono)"}}>
+          <span>Chats</span>
+          <button onClick={()=>{createChat();setShowSidebar(false);}} style={{...S.btn,padding:"4px 12px",fontSize:12}}>＋ New</button>
+        </div>
+        {(!chats||chats.length===0)&&<div style={{padding:"24px 14px",fontSize:13,color:"var(--text3)",textAlign:"center"}}>No chats yet — tap New to start</div>}
+        {(chats||[]).map(c=><div key={c.id} onClick={()=>selectChat(c.id)}
+          style={{padding:"14px",cursor:"pointer",borderBottom:"1px solid var(--border)",background:activeChatId===c.id?"rgba(79,130,255,0.1)":"transparent",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{minWidth:0}}>
+            <div style={{fontSize:13,fontWeight:600,color:"var(--text)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{c.name}</div>
+            <div style={{fontSize:11,color:"var(--text3)",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{c.messages&&c.messages.length>0&&c.messages[c.messages.length-1]?.text?c.messages[c.messages.length-1].text.slice(0,50):""}</div>
+          </div>
+          <span style={{color:"var(--text3)",fontSize:16,marginLeft:8}}>›</span>
+        </div>)}
+      </div>
+    </div>
+
+    {/* Mobile: active chat view */}
+    <div className="ai-mobile-chat" style={{display:isMobile&&!showSidebar?"block":"none"}}>
+      <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:10,overflow:"hidden",display:"flex",flexDirection:"column",height:520}}>
+        <div style={{padding:"10px 14px",borderBottom:"1px solid #1e293b",display:"flex",alignItems:"center",gap:10,background:"var(--bg)",flexShrink:0}}>
+          <button onClick={()=>setShowSidebar(true)} style={{...S.btn,padding:"4px 10px",fontSize:12}}>‹ Chats</button>
+          <span style={{fontSize:13,fontWeight:600,color:"var(--text)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{chats?.find(c=>c.id===activeChatId)?.name||"Chat"}</span>
+          {activeChatId&&<button onClick={()=>{deleteChat(activeChatId);setShowSidebar(true);}} style={{...S.btn,fontSize:11,color:"var(--red)",borderColor:"rgba(248,113,113,0.2)",padding:"3px 8px"}}>🗑</button>}
+        </div>
+        <div style={{flex:1,overflowY:"auto",padding:12,display:"flex",flexDirection:"column",gap:10}}>
+          {!activeChatId&&<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text3)",fontSize:13}}>Select or create a chat</div>}
+          {messages.map((m,i)=><div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
+            <div style={{maxWidth:"85%",background:m.role==="user"?"#1d4ed8":"var(--bg3)",borderRadius:10,padding:"10px 12px",fontSize:13,color:"var(--text)",lineHeight:1.6,whiteSpace:"pre-wrap",border:m.role==="user"?"none":"1px solid #1e293b"}}>
+              {m.text}
+            </div>
+          </div>)}
+          {loading&&<div style={{display:"flex"}}><div style={{background:"var(--bg3)",borderRadius:10,padding:"10px 14px",fontSize:13,color:"var(--text3)",border:"1px solid var(--border)"}}>Thinking...</div></div>}
+          <div ref={endRef}/>
+        </div>
+        <div style={{borderTop:"1px solid #1e293b",padding:10,display:"flex",gap:8,background:"var(--bg2)",flexShrink:0}}>
+          <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&!loading&&send()}
+            placeholder="Ask anything..." style={{...S.input,fontSize:13,flex:1}}/>
+          <button onClick={send} disabled={loading||!input.trim()} style={{...S.btnBlue,padding:"8px 14px",opacity:(loading||!input.trim())?0.5:1,flexShrink:0}}>Send</button>
+        </div>
+      </div>
+    </div>
+
+    {/* Desktop layout */}
+    <div className="ai-panel" style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:10,display:isMobile?"none":"flex",height:500,overflow:"hidden"}}>
       <div className="ai-sidebar" style={sidebarStyle}>
         <div style={{padding:"10px 14px",fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1,borderBottom:"1px solid #1e293b",display:"flex",justifyContent:"space-between",alignItems:"center",fontFamily:"var(--mono)"}}>
           <span>Chats</span>
@@ -1038,7 +1094,8 @@ function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getP
                     <span style={{color:"var(--text3)",fontSize:14}}>{tOpen?"▲":"▼"}</span>
                   </div>
                 </button>
-                {tOpen&&<div style={{marginTop:8}}>
+                {tOpen&&<div style={{marginTop:8,overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
+                  <div style={{minWidth:520}}>
                   <div style={S.specHeader}>
                     <span style={{flex:3}}>Subtopic</span><span style={{flex:2}}>Coverage</span>
                     <span style={{flex:1,textAlign:"center"}}>RAG</span><span style={{flex:2}}>Last revised</span>
@@ -1067,6 +1124,7 @@ function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getP
                       </div>
                     </div>;
                   })}
+                  </div>
                 </div>}
               </div>;
             })}
@@ -1406,14 +1464,30 @@ function App(){
   const [showSettings,setShowSettings]=useState(false);
   const [showMenu,setShowMenu]=useState(false);
   const [showShortcuts,setShowShortcuts]=useState(false);
+  const [showTabMenu,setShowTabMenu]=useState(false);
+  const [isMobileNav,setIsMobileNav]=useState(window.innerWidth<=640);
   const saveTimer=useRef(null);
   const menuRef=useRef(null);
+  const tabMenuRef=useRef(null);
+
+  useEffect(()=>{
+    const handler=()=>setIsMobileNav(window.innerWidth<=640);
+    window.addEventListener("resize",handler);
+    return ()=>window.removeEventListener("resize",handler);
+  },[]);
+
+  // Close tab menu on outside click
+  useEffect(()=>{
+    const handler=(e)=>{if(tabMenuRef.current&&!tabMenuRef.current.contains(e.target))setShowTabMenu(false);};
+    document.addEventListener("mousedown",handler);
+    return ()=>document.removeEventListener("mousedown",handler);
+  },[]);
 
   // Keyboard shortcuts
   useEffect(()=>{
     const handler=(e)=>{
       if(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA"||e.target.tagName==="SELECT")return;
-      if(e.key==="Escape"){setShowPomodoro(false);setShowMenu(false);setShowSettings(false);setShowShortcuts(false);}
+      if(e.key==="Escape"){setShowPomodoro(false);setShowMenu(false);setShowSettings(false);setShowShortcuts(false);setShowTabMenu(false);}
       else if(e.key==="p"||e.key==="P")setShowPomodoro(p=>!p);
       else if(e.key==="1")setTab("timetable");
       else if(e.key==="2")setTab("grades");
@@ -1598,11 +1672,34 @@ function App(){
           </div>
         </div>
       </div>
-      <div style={S.tabBar} className="app-tab-bar">
-        {[["timetable","📅 Timetable"],["grades","📊 Grades"],["spec","📖 Spec Tracker"],["ai","🤖 AI Coach"],["log","📓 Rev. Log"]].map(([id,label])=>
-          <button key={id} className="app-tab-btn" style={{...S.tabBtn,...(tab===id?S.tabActive:{})}} onClick={()=>setTab(id)}>{label}</button>
-        )}
-      </div>
+      {isMobileNav
+        ? <div ref={tabMenuRef} style={{position:"relative",paddingBottom:8}}>
+            <button onClick={()=>setShowTabMenu(p=>!p)}
+              style={{display:"flex",alignItems:"center",gap:8,background:"var(--bg3)",border:"1px solid var(--border2)",borderRadius:8,padding:"7px 14px",cursor:"pointer",fontFamily:"var(--font)",fontWeight:600,fontSize:13,color:"var(--text)"}}>
+              <span style={{display:"flex",flexDirection:"column",gap:3.5,width:16}}>
+                <span style={{height:2,background:"var(--text2)",borderRadius:2,display:"block"}}/>
+                <span style={{height:2,background:"var(--text2)",borderRadius:2,display:"block"}}/>
+                <span style={{height:2,background:"var(--text2)",borderRadius:2,display:"block"}}/>
+              </span>
+              <span style={{color:"var(--accent)"}}>{[["timetable","📅 Timetable"],["grades","📊 Grades"],["spec","📖 Spec Tracker"],["ai","🤖 AI Coach"],["log","📓 Rev. Log"]].find(([id])=>id===tab)?.[1]||"Menu"}</span>
+              <span style={{color:"var(--text3)",fontSize:11,marginLeft:2}}>{showTabMenu?"▲":"▼"}</span>
+            </button>
+            {showTabMenu&&<div style={{position:"absolute",left:0,top:"calc(100% + 2px)",background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:12,padding:6,zIndex:120,boxShadow:"0 8px 32px rgba(0,0,0,0.4)",minWidth:200}}>
+              {[["timetable","📅","Timetable"],["grades","📊","Grades"],["spec","📖","Spec Tracker"],["ai","🤖","AI Coach"],["log","📓","Rev. Log"]].map(([id,emoji,label])=>
+                <button key={id} onClick={()=>{setTab(id);setShowTabMenu(false);}}
+                  style={{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"10px 14px",borderRadius:8,border:"none",background:tab===id?"rgba(79,142,255,0.12)":"transparent",cursor:"pointer",fontFamily:"var(--font)",fontSize:13,fontWeight:tab===id?700:500,color:tab===id?"var(--accent)":"var(--text2)",textAlign:"left"}}>
+                  <span>{emoji}</span><span>{label}</span>
+                  {tab===id&&<span style={{marginLeft:"auto",color:"var(--accent)"}}>✓</span>}
+                </button>
+              )}
+            </div>}
+          </div>
+        : <div style={S.tabBar} className="app-tab-bar">
+            {[["timetable","📅 Timetable"],["grades","📊 Grades"],["spec","📖 Spec Tracker"],["ai","🤖 AI Coach"],["log","📓 Rev. Log"]].map(([id,label])=>
+              <button key={id} className="app-tab-btn" style={{...S.tabBtn,...(tab===id?S.tabActive:{})}} onClick={()=>setTab(id)}>{label}</button>
+            )}
+          </div>
+      }
     </div>
     <div style={S.body} className="app-body">
       {showPomodoro&&<PomodoroTimer onClose={()=>setShowPomodoro(false)} assignedSubjectIds={assignedSubjectIds} revisionLog={revisionLog} setRevisionLog={setRevisionLog}/>}
