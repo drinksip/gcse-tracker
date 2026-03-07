@@ -955,6 +955,94 @@ function AICoach({groqKey,openrouterKey,aiProvider,subtopicData,tests,chats,setC
 }
 
 
+// ─── PAPER TREND GRAPH ───────────────────────────────────────────────────────
+function PaperTrendGraph({papers,color}){
+  // Only render with 2+ scored papers, sorted by date
+  const scored=[...papers].filter(p=>p.score&&p.total&&p.date).sort((a,b)=>a.date.localeCompare(b.date));
+  if(scored.length<2)return null;
+
+  const pts=scored.map(p=>({pct:Math.round((parseInt(p.score)/parseInt(p.total))*100),name:p.name||"",date:p.date,score:p.score,total:p.total}));
+  const W=400,H=120,PAD={t:12,r:12,b:28,l:32};
+  const gW=W-PAD.l-PAD.r,gH=H-PAD.t-PAD.b;
+
+  const xPos=i=>PAD.l+i*(gW/(pts.length-1));
+  const yPos=pct=>PAD.t+gH*(1-pct/100);
+
+  const linePath=pts.map((p,i)=>`${i===0?"M":"L"}${xPos(i)},${yPos(p.pct)}`).join(" ");
+
+  // Y-axis gridlines at 0,25,50,70,100
+  const gridLines=[0,25,50,70,100];
+
+  const dotColor=pct=>pct>=70?"#4ade80":pct>=50?"#fbbf24":"#f87171";
+
+  const [tooltip,setTooltip]=useState(null);
+
+  return <div style={{marginBottom:12,marginTop:4}}>
+    <div style={{fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1,marginBottom:6,fontFamily:"var(--mono)"}}>Score trend</div>
+    <div style={{position:"relative",width:"100%",background:"var(--bg)",borderRadius:8,border:"1px solid var(--border)",overflow:"hidden"}}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",display:"block"}} preserveAspectRatio="xMidYMid meet">
+        {/* Grid lines */}
+        {gridLines.map(g=>{
+          const y=yPos(g);
+          const isSpecial=g===70;
+          return <g key={g}>
+            <line x1={PAD.l} y1={y} x2={W-PAD.r} y2={y} stroke={isSpecial?"#4ade8044":"#1a254022"} strokeWidth={isSpecial?1.5:1} strokeDasharray={isSpecial?"4 3":""}/>
+            <text x={PAD.l-4} y={y+3.5} textAnchor="end" fontSize={8} fill="#4a5a78" fontFamily="JetBrains Mono,monospace">{g}</text>
+          </g>;
+        })}
+        {/* 70% label */}
+        <text x={W-PAD.r+2} y={yPos(70)+3.5} fontSize={7} fill="#4ade8088" fontFamily="JetBrains Mono,monospace">70</text>
+
+        {/* Line */}
+        <path d={linePath} fill="none" stroke={color||"#4f8eff"} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" opacity={0.7}/>
+
+        {/* Area fill */}
+        <path d={`${linePath} L${xPos(pts.length-1)},${PAD.t+gH} L${PAD.l},${PAD.t+gH} Z`} fill={color||"#4f8eff"} opacity={0.06}/>
+
+        {/* Dots */}
+        {pts.map((p,i)=><g key={i}>
+          <circle cx={xPos(i)} cy={yPos(p.pct)} r={5} fill={dotColor(p.pct)} stroke="var(--bg)" strokeWidth={1.5}
+            style={{cursor:"pointer"}}
+            onMouseEnter={()=>setTooltip({i,p})} onMouseLeave={()=>setTooltip(null)}
+            onTouchStart={()=>setTooltip(t=>t?.i===i?null:{i,p})}/>
+        </g>)}
+
+        {/* X-axis date labels — show first, last, and middle if 5+ */}
+        {pts.map((p,i)=>{
+          const show=i===0||i===pts.length-1||(pts.length>=5&&i===Math.floor(pts.length/2));
+          if(!show)return null;
+          const d=new Date(p.date+"T00:00:00");
+          const label=d.toLocaleDateString("en-GB",{day:"numeric",month:"short"});
+          return <text key={i} x={xPos(i)} y={H-6} textAnchor="middle" fontSize={8} fill="#4a5a78" fontFamily="JetBrains Mono,monospace">{label}</text>;
+        })}
+
+        {/* Tooltip */}
+        {tooltip&&(()=>{
+          const {i,p}=tooltip;
+          const tx=xPos(i);const ty=yPos(p.pct);
+          const boxW=90,boxH=36;
+          const bx=Math.min(Math.max(tx-boxW/2,PAD.l),W-PAD.r-boxW);
+          const by=ty-boxH-8<PAD.t?ty+8:ty-boxH-8;
+          return <g>
+            <rect x={bx} y={by} width={boxW} height={boxH} rx={4} fill="#0c1224" stroke="#1a2540" strokeWidth={1}/>
+            <text x={bx+boxW/2} y={by+13} textAnchor="middle" fontSize={9} fill={dotColor(p.pct)} fontFamily="JetBrains Mono,monospace" fontWeight="700">{p.pct}% ({p.score}/{p.total})</text>
+            <text x={bx+boxW/2} y={by+26} textAnchor="middle" fontSize={8} fill="#8a9ab8" fontFamily="JetBrains Mono,monospace">{p.name?p.name.slice(0,14)+(p.name.length>14?"…":""):new Date(p.date+"T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"2-digit"})}</text>
+          </g>;
+        })()}
+      </svg>
+    </div>
+    {/* Delta badge */}
+    {pts.length>=2&&(()=>{
+      const delta=pts[pts.length-1].pct-pts[0].pct;
+      const dColor=delta>0?"var(--green)":delta<0?"var(--red)":"var(--text3)";
+      return <div style={{display:"flex",gap:12,marginTop:6,alignItems:"center"}}>
+        <span style={{fontSize:11,color:dColor,fontFamily:"var(--mono)",fontWeight:600}}>{delta>0?"↑":delta<0?"↓":"→"} {Math.abs(delta)}% since first paper</span>
+        <span style={{fontSize:11,color:"var(--text3)"}}>{pts[pts.length-1].pct}% latest · {Math.round(pts.reduce((a,p)=>a+p.pct,0)/pts.length)}% avg</span>
+      </div>;
+    })()}
+  </div>;
+}
+
 // ─── GRADE CARD (standalone to avoid remount issues) ────────────────────────
 function GradeCard({s,showProgress,getGrade,setGrade,getProgress}){
     const g=getGrade(s.id);
@@ -1016,6 +1104,7 @@ function GradeCard({s,showProgress,getGrade,setGrade,getProgress}){
           <span>{showPapers?"▲":"▼"}</span>
         </button>
         {showPapers&&<div style={{marginTop:8,background:"var(--bg4)",borderRadius:8,padding:"10px 12px",border:"1px solid var(--border)"}}>
+          <PaperTrendGraph papers={papers} color={actualColor}/>
           {papers.length===0&&!addingPaper&&<div style={{fontSize:12,color:"var(--text3)",padding:"4px 0 8px"}}>No papers logged yet.</div>}
           {[...papers].sort((a,b)=>b.date.localeCompare(a.date)).map(p=>{
             const pct=p.total&&p.score?Math.round((parseInt(p.score)/parseInt(p.total))*100):null;
