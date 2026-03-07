@@ -37,7 +37,7 @@
     async register(username, password) {
       const email = username.trim().toLowerCase() + "@gcsetracker.app";
       const cred = await createUserWithEmailAndPassword(auth, email, password);
-      await setDoc(doc(db, "users", cred.user.uid), { username: username.trim().toLowerCase(), timetable:{}, spec:{}, grades:{}, tests:[], groqKey:"", openrouterKey:"", hfKey:"", aiProvider:"groq", specRequests:[], chats:[], revisionLog:[] });
+      await setDoc(doc(db, "users", cred.user.uid), { username: username.trim().toLowerCase(), timetable:{}, spec:{}, grades:{}, tests:[], groqKey:"", openrouterKey:"", aiProvider:"groq", specRequests:[], chats:[], revisionLog:[] });
       return { uid: cred.user.uid, username: username.trim().toLowerCase() };
     },
     async login(username, password) {
@@ -229,7 +229,7 @@ async function callAI(aiConfig, prompt, systemPrompt){
   if(provider === "openrouter"){
     const res = await fetch("https://openrouter.ai/api/v1/chat/completions",{
       method:"POST",
-      headers:{"Content-Type":"application/json","Authorization":"Bearer "+key,"HTTP-Referer":"https://gcsetracker.app","X-Title":"GCSE Revision Tracker"},
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+(key||"").trim()},
       body:JSON.stringify({
         model:"openai/gpt-oss-120b:free",
         messages:[{role:"system",content:systemPrompt},{role:"user",content:prompt}],
@@ -237,22 +237,10 @@ async function callAI(aiConfig, prompt, systemPrompt){
       })
     });
     const data = await res.json();
-    if(data.error) throw new Error(data.error.message);
-    return (data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content) || "No response received.";
-  }
-
-  if(provider === "huggingface"){
-    const res = await fetch("https://api-inference.huggingface.co/v1/chat/completions",{
-      method:"POST",
-      headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},
-      body:JSON.stringify({
-        model:"meta-llama/Llama-3.3-70B-Instruct",
-        messages:[{role:"system",content:systemPrompt},{role:"user",content:prompt}],
-        max_tokens:1200, temperature:0.7
-      })
-    });
-    const data = await res.json();
-    if(data.error) throw new Error(typeof data.error==="string"?data.error:data.error.message||"Hugging Face error");
+    if(!res.ok||data.error){
+      const msg=data.error?.message||data.error||`HTTP ${res.status}`;
+      throw new Error("OpenRouter: "+msg);
+    }
     return (data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content) || "No response received.";
   }
 
@@ -333,22 +321,21 @@ function LoginScreen({onLogin}){
 }
 
 // ─── SETTINGS PANEL ───────────────────────────────────────────────────────────
-function Settings({groqKey,setGroqKey,openrouterKey,setOpenrouterKey,hfKey,setHfKey,aiProvider,setAiProvider,onClose}){
+function Settings({groqKey,setGroqKey,openrouterKey,setOpenrouterKey,aiProvider,setAiProvider,onClose}){
   const [gk,setGk]=useState(groqKey||"");
   const [ork,setOrk]=useState(openrouterKey||"");
-  const [hfk,setHfk]=useState(hfKey||"");
   const [prov,setProv]=useState(aiProvider||"groq");
   const [saved,setSaved]=useState(false);
   const [showSteps,setShowSteps]=useState(false);
 
   const save=()=>{
-    setGroqKey(gk);setOpenrouterKey(ork);setHfKey(hfk);setAiProvider(prov);
+    setGroqKey(gk);setOpenrouterKey(ork);setAiProvider(prov);
     setSaved(true);setTimeout(()=>setSaved(false),2000);
   };
 
   const providerInfo={
     groq:{
-      label:"Groq (Llama 3.3 70B)",badge:"Free · No age restriction",color:"#7c3aed",
+      label:"Groq (Llama 3.3 70B)",badge:"⭐ Recommended · Free · No age restriction",color:"#7c3aed",
       steps:[
         ["1","Go to Groq Console","Click the link below — just needs an email, no age restriction."],
         ["2","Sign up or log in","Create a free account. No credit card required."],
@@ -359,42 +346,28 @@ function Settings({groqKey,setGroqKey,openrouterKey,setOpenrouterKey,hfKey,setHf
       ],
       link:"https://console.groq.com/keys",linkLabel:"Open Groq Console →",
       placeholder:"gsk_...",
-      hint:"Uses Llama 3.3 70B — strong for GCSE revision.",
-      limits:[["30","req / min"],["6K","tokens / min"],["500K","tokens / day"]]
+      hint:"✅ Best option — fastest responses, no credit card, no age restriction, generous limits.",
+      limits:[["30","req / min"],["6,000","tokens / min"],["500,000","tokens / day"]]
     },
     openrouter:{
-      label:"OpenRouter (GPT-OSS 120B)",badge:"Free tier · No age restriction",color:"#6366f1",
+      label:"OpenRouter (GPT-OSS 120B)",badge:"Free tier · May need card on file",color:"#6366f1",
       steps:[
         ["1","Go to OpenRouter","Click the link below — just needs an email, no age restriction."],
-        ["2","Sign up or log in","Create a free account. No credit card required for free models."],
-        ["3","Go to API Keys","Click your profile icon → Keys."],
-        ["4","Create an API key","Click Create Key, give it any name, click Create."],
-        ["5","Copy the key","Starts with sk-or-... — copy it now."],
-        ["6","Paste it below","Paste into the box below and click Save."],
+        ["2","Sign up or log in","Create a free account."],
+        ["3","Add a card (required)","Even for free models, OpenRouter requires a card on file. You won't be charged."],
+        ["4","Go to API Keys","Click your profile icon → Keys."],
+        ["5","Create an API key","Click Create Key, give it any name, click Create."],
+        ["6","Copy the key","Starts with sk-or-... — copy it now."],
+        ["7","Paste it below","Paste into the box below and click Save."],
       ],
       link:"https://openrouter.ai/settings/keys",linkLabel:"Open OpenRouter →",
       placeholder:"sk-or-...",
-      hint:"Uses OpenAI GPT-OSS 120B (free) — powerful reasoning model, great for GCSE.",
-      limits:[["~10-20","req / min"],["Varies","by model"],["No hard","daily cap"]]
-    },
-    huggingface:{
-      label:"Hugging Face (Llama 3.3 70B)",badge:"Free · No age restriction",color:"#f59e0b",
-      steps:[
-        ["1","Go to Hugging Face","Click the link below — just needs an email, no age restriction."],
-        ["2","Sign up or log in","Create a free account. No credit card required."],
-        ["3","Go to Access Tokens","Click your profile icon → Settings → Access Tokens."],
-        ["4","Create a token","Click New token, give it a name, set role to Read, click Create."],
-        ["5","Copy the token","Starts with hf_... — copy it now."],
-        ["6","Paste it below","Paste into the box below and click Save."],
-      ],
-      link:"https://huggingface.co/settings/tokens",linkLabel:"Open Hugging Face →",
-      placeholder:"hf_...",
-      hint:"Uses Llama 3.3 70B via Hugging Face — good free fallback option.",
-      limits:[["~200","req / hour"],["Monthly","credit cap"],["Resets","each month"]]
+      hint:"⚠️ Requires a card on file even for free use. Uses GPT-OSS 120B — stronger reasoning than Groq.",
+      limits:[["50","req / day"],["~10","req / min"],["No token","day cap"]]
     }
   };
   const info=providerInfo[prov];
-  const currentKey=prov==="openrouter"?ork:prov==="huggingface"?hfk:gk;
+  const currentKey=prov==="openrouter"?ork:gk;
 
   return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
     <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:16,padding:"32px",width:"100%",maxWidth:560,maxHeight:"90vh",overflowY:"auto"}}>
@@ -439,10 +412,8 @@ function Settings({groqKey,setGroqKey,openrouterKey,setOpenrouterKey,hfKey,setHf
 
       <div style={{fontSize:11,color:"var(--text3)",marginBottom:6}}>Paste your {info.label} key:</div>
       {prov==="groq"
-        ?<input value={gk} onChange={e=>setGk(e.target.value)} placeholder={info.placeholder} style={{...S.input,fontSize:12,marginBottom:10}}/>
-        :prov==="huggingface"
-          ?<input value={hfk} onChange={e=>setHfk(e.target.value)} placeholder={info.placeholder} style={{...S.input,fontSize:12,marginBottom:10}}/>
-          :<input value={ork} onChange={e=>setOrk(e.target.value)} placeholder={info.placeholder} style={{...S.input,fontSize:12,marginBottom:10}}/>
+        ?<input value={gk} onChange={e=>setGk(e.target.value.trim())} placeholder={info.placeholder} style={{...S.input,fontSize:12,marginBottom:10}}/>
+        :<input value={ork} onChange={e=>setOrk(e.target.value.trim())} placeholder={info.placeholder} style={{...S.input,fontSize:12,marginBottom:10}}/>
       }
       <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
         {info.limits.map(([val,label],i)=><div key={i} style={{flex:1,minWidth:80,background:"var(--bg4)",border:"1px solid var(--border)",borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
@@ -459,7 +430,7 @@ function Settings({groqKey,setGroqKey,openrouterKey,setOpenrouterKey,hfKey,setHf
     </div>
   </div>;
 }
-function Timetable({timetable,setTimetable,tests,setTests,groqKey,openrouterKey,hfKey,aiProvider,getProgress,subtopicData,setShowSettings}){
+function Timetable({timetable,setTimetable,tests,setTests,groqKey,openrouterKey,aiProvider,getProgress,subtopicData,setShowSettings}){
   const [showSel,setShowSel]=useState(false);
   const [showAI,setShowAI]=useState(false);
   const [aiLoading,setAiLoading]=useState(false);
@@ -516,7 +487,7 @@ function Timetable({timetable,setTimetable,tests,setTests,groqKey,openrouterKey,
   };
 
   const runAI=async()=>{
-    const activeKey=aiProvider==="openrouter"?openrouterKey:aiProvider==="huggingface"?hfKey:groqKey;
+    const activeKey=aiProvider==="openrouter"?openrouterKey:groqKey;
     const aiConfig={provider:aiProvider||"groq",key:activeKey};
     if(!activeKey){setAiResult("No AI key set. Go to AI Setup to add one.");return;}
     if(assignedSubjectIds.length===0){setAiResult("Please add subjects to your timetable first before optimizing.");return;}
@@ -656,7 +627,7 @@ function Timetable({timetable,setTimetable,tests,setTests,groqKey,openrouterKey,
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <span style={{fontSize:16}}>🤖</span>
           <div style={S.cardTitle}>AI Timetable Optimiser</div>
-          {!(aiProvider==="openrouter"?openrouterKey:aiProvider==="huggingface"?hfKey:groqKey)&&<span style={{fontSize:10,color:"var(--text3)",background:"var(--border)",borderRadius:4,padding:"2px 6px"}}>Needs AI key</span>}
+          {!(aiProvider==="openrouter"?openrouterKey:groqKey)&&<span style={{fontSize:10,color:"var(--text3)",background:"var(--border)",borderRadius:4,padding:"2px 6px"}}>Needs AI key</span>}
         </div>
         <button onClick={()=>setShowAI(p=>!p)} style={S.btn}>{showAI?"Hide":"Optimise my timetable ✨"}</button>
       </div>
@@ -665,7 +636,7 @@ function Timetable({timetable,setTimetable,tests,setTests,groqKey,openrouterKey,
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:"var(--bg4)",borderRadius:8,padding:"8px 12px",marginBottom:12,border:"1px solid var(--border)"}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <span style={{fontSize:12}}>{aiProvider==="openrouter"?"✦":"⚡"}</span>
-            <span style={{fontSize:12,color:"var(--text2)"}}>Using: <span style={{color:aiProvider==="openrouter"?"#0891b2":aiProvider==="huggingface"?"#f59e0b":"#7c3aed",fontWeight:700}}>{aiProvider==="openrouter"?"OpenRouter · GPT-OSS 120B":aiProvider==="huggingface"?"Hugging Face · Llama 3.3 70B":"Groq · Llama 3.3 70B"}</span></span>
+            <span style={{fontSize:12,color:"var(--text2)"}}>Using: <span style={{color:aiProvider==="openrouter"?"#0891b2":"#7c3aed",fontWeight:700}}>{aiProvider==="openrouter"?"OpenRouter · GPT-OSS 120B":"Groq · Llama 3.3 70B"}</span></span>
           </div>
           <button onClick={()=>setShowSettings(true)} style={{...S.btn,fontSize:11,padding:"3px 10px"}}>Switch provider</button>
         </div>
@@ -699,7 +670,7 @@ function Timetable({timetable,setTimetable,tests,setTests,groqKey,openrouterKey,
 
 // ─── AI COACH ──────────────────────────────────────────────────────────────────
 function genId(){return"c"+Date.now()+"_"+Math.random().toString(36).substr(2,9);}
-function AICoach({groqKey,openrouterKey,hfKey,aiProvider,subtopicData,tests,chats,setChats}){
+function AICoach({groqKey,openrouterKey,aiProvider,subtopicData,tests,chats,setChats}){
   const [activeChatId,setActiveChatId]=useState(null);
   const [input,setInput]=useState("");
   const [loading,setLoading]=useState(false);
@@ -750,7 +721,7 @@ function AICoach({groqKey,openrouterKey,hfKey,aiProvider,subtopicData,tests,chat
       const newChat={id,name:userMsg.slice(0,32)+(userMsg.length>32?"...":""),messages:[welcome,userMsgObj]};
       setChats(p=>[...(p||[]),newChat]);
       setActiveChatId(id);
-      const activeKey3=aiProvider==="openrouter"?openrouterKey:aiProvider==="huggingface"?hfKey:groqKey;
+      const activeKey3=aiProvider==="openrouter"?openrouterKey:groqKey;
       const aiConfig3={provider:aiProvider||"groq",key:activeKey3};
       if(!activeKey3){
         setChats(p=>(p||[]).map(c=>c.id===id?{...c,messages:[...c.messages,{role:"assistant",text:"No AI key set. Go to AI Setup to add one."}]}:c));
@@ -768,7 +739,7 @@ function AICoach({groqKey,openrouterKey,hfKey,aiProvider,subtopicData,tests,chat
       setLoading(false);
       return;
     }
-    const activeKey5=aiProvider==="openrouter"?openrouterKey:aiProvider==="huggingface"?hfKey:groqKey;
+    const activeKey5=aiProvider==="openrouter"?openrouterKey:groqKey;
     const aiConfig5={provider:aiProvider||"groq",key:activeKey5};
     if(!activeKey5){
       updateChat(activeChatId,c=>({messages:[...c.messages,{role:"user",text:input},{role:"assistant",text:"No AI key set. Go to AI Setup to add one."}]}));
@@ -800,7 +771,7 @@ function AICoach({groqKey,openrouterKey,hfKey,aiProvider,subtopicData,tests,chat
     <div style={S.sectionHeader}>🤖 AI Study Coach</div>
     <p style={{color:"var(--text3)",fontSize:12,marginBottom:16,marginTop:4}}>
       Ask me anything about your revision. Chats are saved automatically.
-      {!(aiProvider==="openrouter"?openrouterKey:aiProvider==="huggingface"?hfKey:groqKey)&&<span style={{color:"var(--red)"}}> (Add an AI key in AI Setup to use this)</span>}
+      {!(aiProvider==="openrouter"?openrouterKey:groqKey)&&<span style={{color:"var(--red)"}}> (Add an AI key in AI Setup to use this)</span>}
     </p>
     <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:10,display:"flex",height:500,overflow:"hidden"}}>
       <div style={sidebarStyle}>
@@ -1409,7 +1380,6 @@ function App(){
   const [tests,setTestsRaw]=useState([]);
   const [groqKey,setGroqKeyRaw]=useState("");
   const [openrouterKey,setOpenrouterKeyRaw]=useState("");
-  const [hfKey,setHfKeyRaw]=useState("");
   const [aiProvider,setAiProviderRaw]=useState("groq");
   const [specRequests,setSpecRequestsRaw]=useState([]);
   const [chats,setChatsRaw]=useState([]);
@@ -1467,12 +1437,11 @@ function App(){
         if(d.tests)setTestsRaw(d.tests);
         if(d.groqKey!==undefined)setGroqKeyRaw(d.groqKey);
         if(d.openrouterKey!==undefined)setOpenrouterKeyRaw(d.openrouterKey);
-        if(d.hfKey!==undefined)setHfKeyRaw(d.hfKey);
         if(d.aiProvider)setAiProviderRaw(d.aiProvider);
         if(d.specRequests)setSpecRequestsRaw(d.specRequests);
         if(d.chats)setChatsRaw(d.chats);
         if(d.revisionLog)setRevisionLogRaw(d.revisionLog);
-        if(user)saveToFirebase(user.uid,d.timetable||{},d.spec||{},d.grades||{},d.tests||[],d.groqKey||"",d.openrouterKey||"",d.hfKey||"",d.aiProvider||"groq",d.specRequests||[],d.chats||[],d.revisionLog||[]);
+        if(user)saveToFirebase(user.uid,d.timetable||{},d.spec||{},d.grades||{},d.tests||[],d.groqKey||"",d.openrouterKey||"",d.aiProvider||"groq",d.specRequests||[],d.chats||[],d.revisionLog||[]);
         alert("Data restored successfully!");
       }catch(err){alert("Invalid backup file.");}
     };
@@ -1490,7 +1459,7 @@ function App(){
             if(snap){
               setTimetableRaw(snap.timetable||{});setSubtopicDataRaw(snap.spec||{});
               setGradesRaw(snap.grades||{});setTestsRaw(snap.tests||[]);setGroqKeyRaw(snap.groqKey||"");
-              setOpenrouterKeyRaw(snap.openrouterKey||"");setHfKeyRaw(snap.hfKey||"");setAiProviderRaw(snap.aiProvider||"groq");
+              setOpenrouterKeyRaw(snap.openrouterKey||"");setAiProviderRaw(snap.aiProvider||"groq");
               setSpecRequestsRaw(snap.specRequests||[]);setChatsRaw(snap.chats||[]);setRevisionLogRaw(snap.revisionLog||[]);
               setUser({uid:fbUser.uid,username:snap.username||fbUser.email.replace("@gcsetracker.app","")});
             }
@@ -1504,62 +1473,61 @@ function App(){
     return()=>{if(typeof unsub==="function")unsub();};
   },[]);
 
-  const saveToFirebase=useCallback(async(uid,tt,spec,gr,ts,gk,gmk,hfk,ap,sr,ch,rl)=>{
+  const saveToFirebase=useCallback(async(uid,tt,spec,gr,ts,gk,gmk,ap,sr,ch,rl)=>{
     if(!uid||!window.__firebase)return;
     setSaving(true);
-    await window.__firebase.saveData(uid,{timetable:tt,spec,grades:gr,tests:ts,groqKey:gk,openrouterKey:gmk,hfKey:hfk,aiProvider:ap,specRequests:sr,chats:ch,revisionLog:rl});
+    await window.__firebase.saveData(uid,{timetable:tt,spec,grades:gr,tests:ts,groqKey:gk,openrouterKey:gmk,aiProvider:ap,specRequests:sr,chats:ch,revisionLog:rl});
     setSaving(false);
   },[]);
 
-  const debouncedSave=useCallback((uid,tt,spec,gr,ts,gk,gmk,hfk,ap,sr,ch,rl)=>{
+  const debouncedSave=useCallback((uid,tt,spec,gr,ts,gk,gmk,ap,sr,ch,rl)=>{
     clearTimeout(saveTimer.current);
-    saveTimer.current=setTimeout(()=>saveToFirebase(uid,tt,spec,gr,ts,gk,gmk,hfk,ap,sr,ch,rl),1500);
+    saveTimer.current=setTimeout(()=>saveToFirebase(uid,tt,spec,gr,ts,gk,gmk,ap,sr,ch,rl),1500);
   },[saveToFirebase]);
 
-  const setTimetable=v=>{const next=typeof v==="function"?v(timetable):v;setTimetableRaw(next);if(user)debouncedSave(user.uid,next,subtopicData,grades,tests,groqKey,openrouterKey,hfKey,aiProvider,specRequests,chats,revisionLog);};
-  const setSubtopicData=v=>{const next=typeof v==="function"?v(subtopicData):v;setSubtopicDataRaw(next);if(user)debouncedSave(user.uid,timetable,next,grades,tests,groqKey,openrouterKey,hfKey,aiProvider,specRequests,chats,revisionLog);};
-  const setGrades=v=>{const next=typeof v==="function"?v(grades):v;setGradesRaw(next);if(user)debouncedSave(user.uid,timetable,subtopicData,next,tests,groqKey,openrouterKey,hfKey,aiProvider,specRequests,chats,revisionLog);};
-  const setTests=v=>{const next=typeof v==="function"?v(tests):v;setTestsRaw(next);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,next,groqKey,openrouterKey,hfKey,aiProvider,specRequests,chats,revisionLog);};
-  const setGroqKey=v=>{setGroqKeyRaw(v);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,v,openrouterKey,hfKey,aiProvider,specRequests,chats,revisionLog);};
-  const setOpenrouterKey=v=>{setOpenrouterKeyRaw(v);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,groqKey,v,hfKey,aiProvider,specRequests,chats,revisionLog);};
-  const setHfKey=v=>{setHfKeyRaw(v);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,groqKey,openrouterKey,v,aiProvider,specRequests,chats,revisionLog);};
-  const setAiProvider=v=>{setAiProviderRaw(v);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,groqKey,openrouterKey,hfKey,v,specRequests,chats,revisionLog);};
-  const setSpecRequests=v=>{const next=typeof v==="function"?v(specRequests):v;setSpecRequestsRaw(next);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,groqKey,openrouterKey,hfKey,aiProvider,next,chats,revisionLog);};
+  const setTimetable=v=>{const next=typeof v==="function"?v(timetable):v;setTimetableRaw(next);if(user)debouncedSave(user.uid,next,subtopicData,grades,tests,groqKey,openrouterKey,aiProvider,specRequests,chats,revisionLog);};
+  const setSubtopicData=v=>{const next=typeof v==="function"?v(subtopicData):v;setSubtopicDataRaw(next);if(user)debouncedSave(user.uid,timetable,next,grades,tests,groqKey,openrouterKey,aiProvider,specRequests,chats,revisionLog);};
+  const setGrades=v=>{const next=typeof v==="function"?v(grades):v;setGradesRaw(next);if(user)debouncedSave(user.uid,timetable,subtopicData,next,tests,groqKey,openrouterKey,aiProvider,specRequests,chats,revisionLog);};
+  const setTests=v=>{const next=typeof v==="function"?v(tests):v;setTestsRaw(next);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,next,groqKey,openrouterKey,aiProvider,specRequests,chats,revisionLog);};
+  const setGroqKey=v=>{setGroqKeyRaw(v);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,v,openrouterKey,aiProvider,specRequests,chats,revisionLog);};
+  const setOpenrouterKey=v=>{setOpenrouterKeyRaw(v);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,groqKey,v,aiProvider,specRequests,chats,revisionLog);};
+  const setAiProvider=v=>{setAiProviderRaw(v);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,groqKey,openrouterKey,v,specRequests,chats,revisionLog);};
+  const setSpecRequests=v=>{const next=typeof v==="function"?v(specRequests):v;setSpecRequestsRaw(next);if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,groqKey,openrouterKey,aiProvider,next,chats,revisionLog);};
   const setRevisionLog=v=>{
     if(typeof v==="function"){
       setRevisionLogRaw(prev=>{
         const next=v(prev);
-        setTimeout(()=>{if(user)saveToFirebase(user.uid,timetable,subtopicData,grades,tests,groqKey,openrouterKey,hfKey,aiProvider,specRequests,chats,next);},0);
+        setTimeout(()=>{if(user)saveToFirebase(user.uid,timetable,subtopicData,grades,tests,groqKey,openrouterKey,aiProvider,specRequests,chats,next);},0);
         return next;
       });
     } else {
       setRevisionLogRaw(v);
-      if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,groqKey,openrouterKey,hfKey,aiProvider,specRequests,chats,v);
+      if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,groqKey,openrouterKey,aiProvider,specRequests,chats,v);
     }
   };
   const setChats=v=>{
     if(typeof v==="function"){
       setChatsRaw(prev=>{
         const next=v(prev);
-        setTimeout(()=>{if(user)saveToFirebase(user.uid,timetable,subtopicData,grades,tests,groqKey,openrouterKey,hfKey,aiProvider,specRequests,next,revisionLog);},0);
+        setTimeout(()=>{if(user)saveToFirebase(user.uid,timetable,subtopicData,grades,tests,groqKey,openrouterKey,aiProvider,specRequests,next,revisionLog);},0);
         return next;
       });
     } else {
       setChatsRaw(v);
-      if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,groqKey,openrouterKey,hfKey,aiProvider,specRequests,v,revisionLog);
+      if(user)debouncedSave(user.uid,timetable,subtopicData,grades,tests,groqKey,openrouterKey,aiProvider,specRequests,v,revisionLog);
     }
   };
 
   const handleLogin=(uid,username,data)=>{
     setTimetableRaw(data.timetable||{});setSubtopicDataRaw(data.spec||{});
     setGradesRaw(data.grades||{});setTestsRaw(data.tests||[]);setGroqKeyRaw(data.groqKey||"");
-    setOpenrouterKeyRaw(data.openrouterKey||"");setHfKeyRaw(data.hfKey||"");setAiProviderRaw(data.aiProvider||"groq");
+    setOpenrouterKeyRaw(data.openrouterKey||"");setAiProviderRaw(data.aiProvider||"groq");
     setSpecRequestsRaw(data.specRequests||[]);setChatsRaw(data.chats||[]);setRevisionLogRaw(data.revisionLog||[]);
     setUser({uid,username});
   };
   const handleLogout=async()=>{
     await window.__firebase.logout();
-    setUser(null);setTimetableRaw({});setSubtopicDataRaw({});setGradesRaw({});setTestsRaw([]);setGroqKeyRaw("");setOpenrouterKeyRaw("");setHfKeyRaw("");setAiProviderRaw("groq");setSpecRequestsRaw([]);setChatsRaw([]);setRevisionLogRaw([]);
+    setUser(null);setTimetableRaw({});setSubtopicDataRaw({});setGradesRaw({});setTestsRaw([]);setGroqKeyRaw("");setOpenrouterKeyRaw("");setAiProviderRaw("groq");setSpecRequestsRaw([]);setChatsRaw([]);setRevisionLogRaw([]);
   };
 
   const getVal=(sId,tId,i)=>subtopicData[`${sId}__${tId}__${i}`]||{coverage:"Not covered",rag:"None",date:""};
@@ -1577,7 +1545,7 @@ function App(){
   if(!user)return <LoginScreen onLogin={handleLogin}/>;
 
   return <div style={S.root}>
-    {showSettings&&<Settings groqKey={groqKey} setGroqKey={setGroqKey} openrouterKey={openrouterKey} setOpenrouterKey={setOpenrouterKey} hfKey={hfKey} setHfKey={setHfKey} aiProvider={aiProvider} setAiProvider={setAiProvider} onClose={()=>setShowSettings(false)}/>}
+    {showSettings&&<Settings groqKey={groqKey} setGroqKey={setGroqKey} openrouterKey={openrouterKey} setOpenrouterKey={setOpenrouterKey} aiProvider={aiProvider} setAiProvider={setAiProvider} onClose={()=>setShowSettings(false)}/>}
     {showShortcuts&&<ShortcutsModal onClose={()=>setShowShortcuts(false)}/>}
     <div style={S.header}>
       <div style={S.headerInner}>
@@ -1587,7 +1555,7 @@ function App(){
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <span style={{fontSize:11,color:saving?"var(--text3)":"var(--green)",fontFamily:"var(--mono)",background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:6,padding:"3px 10px",transition:"color 0.3s"}}>{saving?"⟳ Saving":"✓ Saved"}</span>
-          {(aiProvider==="openrouter"?openrouterKey:aiProvider==="huggingface"?hfKey:groqKey)&&<span style={{fontSize:11,color:"var(--green)",background:"rgba(74,222,128,0.1)",border:"1px solid rgba(74,222,128,0.2)",borderRadius:4,padding:"2px 7px"}}>🤖 {aiProvider==="openrouter"?"OpenRouter":aiProvider==="huggingface"?"Hugging Face":"Groq"}</span>}
+          {(aiProvider==="openrouter"?openrouterKey:groqKey)&&<span style={{fontSize:11,color:"var(--green)",background:"rgba(74,222,128,0.1)",border:"1px solid rgba(74,222,128,0.2)",borderRadius:4,padding:"2px 7px"}}>🤖 {aiProvider==="openrouter"?"OpenRouter":"Groq"}</span>}
           <button onClick={()=>setShowPomodoro(true)} style={{...S.btn,color:"#f87171",borderColor:"rgba(248,113,113,0.3)"}}>🍅</button>
           {/* Menu */}
           <div ref={menuRef} style={{position:"relative"}}>
@@ -1624,10 +1592,10 @@ function App(){
     </div>
     <div style={S.body}>
       {showPomodoro&&<PomodoroTimer onClose={()=>setShowPomodoro(false)} assignedSubjectIds={assignedSubjectIds} revisionLog={revisionLog} setRevisionLog={setRevisionLog}/>}
-      {tab==="timetable"&&<Timetable timetable={timetable} setTimetable={setTimetable} tests={tests} setTests={setTests} groqKey={groqKey} openrouterKey={openrouterKey} hfKey={hfKey} aiProvider={aiProvider} getProgress={getProgress} subtopicData={subtopicData} setShowSettings={setShowSettings}/>}
+      {tab==="timetable"&&<Timetable timetable={timetable} setTimetable={setTimetable} tests={tests} setTests={setTests} groqKey={groqKey} openrouterKey={openrouterKey} aiProvider={aiProvider} getProgress={getProgress} subtopicData={subtopicData} setShowSettings={setShowSettings}/>}
       {tab==="grades"&&<Grades grades={grades} setGrades={setGrades} getProgress={getProgress} assignedSubjectIds={assignedSubjectIds}/>}
-      {tab==="spec"&&<SpecTracker expSubj={expSubj} setExpSubj={setExpSubj} expTopic={expTopic} setExpTopic={setExpTopic} getVal={getVal} setVal={setVal} getProgress={getProgress} assignedSubjectIds={assignedSubjectIds} user={user} specRequests={specRequests} setSpecRequests={setSpecRequests} aiConfig={{provider:aiProvider,key:aiProvider==="openrouter"?openrouterKey:aiProvider==="huggingface"?hfKey:groqKey}}/>}
-      {tab==="ai"&&<AICoach groqKey={groqKey} openrouterKey={openrouterKey} hfKey={hfKey} aiProvider={aiProvider} subtopicData={subtopicData} tests={tests} chats={chats} setChats={setChats}/>}
+      {tab==="spec"&&<SpecTracker expSubj={expSubj} setExpSubj={setExpSubj} expTopic={expTopic} setExpTopic={setExpTopic} getVal={getVal} setVal={setVal} getProgress={getProgress} assignedSubjectIds={assignedSubjectIds} user={user} specRequests={specRequests} setSpecRequests={setSpecRequests} aiConfig={{provider:aiProvider,key:aiProvider==="openrouter"?openrouterKey:groqKey}}/>}
+      {tab==="ai"&&<AICoach groqKey={groqKey} openrouterKey={openrouterKey} aiProvider={aiProvider} subtopicData={subtopicData} tests={tests} chats={chats} setChats={setChats}/>}
       {tab==="log"&&<RevisionLogger revisionLog={revisionLog} setRevisionLog={setRevisionLog} assignedSubjectIds={assignedSubjectIds}/>}
     </div>
   </div>;
