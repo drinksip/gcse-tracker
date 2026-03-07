@@ -52,6 +52,9 @@
     async sendSpecRequest(username, subjectId, subjectName, examBoard) {
       await addDoc(collection(db, "spec_requests"), { username, subjectId, subjectName, examBoard, timestamp: new Date().toISOString() });
     },
+    async sendFeatureRequest(username, yearGroup, type, message) {
+      await addDoc(collection(db, "feature_requests"), { username, yearGroup, type, message: message.trim(), timestamp: new Date().toISOString() });
+    },
     onAuthChange(cb) { return onAuthStateChanged(auth, cb); }
   };
 
@@ -179,6 +182,74 @@ const RAG_BG={None:"transparent",Red:"rgba(248,113,113,0.12)",Amber:"rgba(251,19
 // Color mapping for CSS variables to hex
 const COLOR_MAP={"var(--green)":"#34d399","var(--red)":"#f87171","var(--accent)":"#4f8eff","var(--amber)":"#fbbf24","var(--text2)":"#8a9ab8"};
 const getActualColor=(colorStr)=>{if(colorStr.startsWith("var(--"))return COLOR_MAP[colorStr]||"#8a9ab8";return colorStr;};
+
+// ─── GRADE BOUNDARIES (Summer 2025, raw marks converted to %) ────────────────
+// Source: Official exam board publications, Summer 2025 series (results day 21 Aug 2025).
+// Percentages rounded to nearest whole number. Indicative only — 2026 boundaries
+// are set after marking and will differ slightly. Published 20 Aug 2026.
+const GRADE_BOUNDARIES={
+  // AQA Biology Higher — max 200
+  biology:     {board:"AQA",    tier:"Higher", max:200, raw:{9:141,8:127,7:113,6:94,5:75,4:56,3:46},
+                pct:{9:71,8:64,7:57,6:47,5:38,4:28,3:23}},
+  // AQA Chemistry Higher — max 200
+  chemistry:   {board:"AQA",    tier:"Higher", max:200, raw:{9:150,8:132,7:115,6:90,5:66,4:42,3:30},
+                pct:{9:75,8:66,7:58,6:45,5:33,4:21,3:15}},
+  // AQA Physics Higher — max 200
+  physics:     {board:"AQA",    tier:"Higher", max:200, raw:{9:152,8:139,7:126,6:107,5:88,4:70,3:61},
+                pct:{9:76,8:70,7:63,6:54,5:44,4:35,3:31}},
+  // Edexcel Maths Higher — max 240
+  maths:       {board:"Edexcel",tier:"Higher", max:240, raw:{9:217,8:186,7:156,6:121,5:87,4:53,3:36},
+                pct:{9:90,8:78,7:65,6:50,5:36,4:22,3:15}},
+  // AQA English Language — max 160
+  english_lang:{board:"AQA",    tier:"",       max:160, raw:{9:119,8:109,7:100,6:91,5:82,4:73,3:54,2:35,1:16},
+                pct:{9:74,8:68,7:63,6:57,5:51,4:46,3:34,2:22,1:10}},
+  // AQA English Literature — max 160
+  english_lit: {board:"AQA",    tier:"",       max:160, raw:{9:136,8:122,7:108,6:92,5:77,4:62,3:46,2:30,1:15},
+                pct:{9:85,8:76,7:68,6:58,5:48,4:39,3:29,2:19,1:9}},
+  // AQA German Higher — max 240
+  german:      {board:"AQA",    tier:"Higher", max:240, raw:{9:205,8:184,7:163,6:144,5:126,4:108,3:99},
+                pct:{9:85,8:77,7:68,6:60,5:53,4:45,3:41}},
+  // AQA Geography — max 200
+  geography:   {board:"AQA",    tier:"",       max:200, raw:{9:154,8:141,7:129,6:115,5:102,4:89,3:65,2:41,1:18},
+                pct:{9:77,8:71,7:65,6:58,5:51,4:45,3:33,2:21,1:9}},
+  // OCR Computer Science J277 — max 180
+  cs:          {board:"OCR",    tier:"",       max:180, raw:{9:155,8:142,7:130,6:111,5:92,4:74,3:55,2:36,1:18},
+                pct:{9:86,8:79,7:72,6:62,5:51,4:41,3:31,2:20,1:10}},
+  // AQA Music — max 200 (Edexcel Music boundaries are very similar year to year)
+  music:       {board:"AQA/Edexcel",tier:"",   max:200, raw:{9:170,8:160,7:150,6:137,5:124,4:112,3:91,2:70,1:49},
+                pct:{9:85,8:80,7:75,6:69,5:62,4:56,3:46,2:35,1:25}},
+};
+
+const pctToGrade=(subjectId,pct)=>{
+  const b=GRADE_BOUNDARIES[subjectId];if(!b)return null;
+  const grades=Object.keys(b.pct).map(Number).sort((a,z)=>z-a);
+  for(const g of grades){if(pct>=b.pct[g])return g;}
+  return "U";
+};
+
+const lastRevisedInfo=(date)=>{
+  if(!date)return null;
+  const d=new Date(date+"T00:00:00");
+  const days=Math.floor((new Date()-d)/(1000*60*60*24));
+  if(days<0)return null;
+  const color=days<=7?"#4ade80":days<=14?"#fbbf24":days<=30?"#fb923c":"#f87171";
+  const label=days===0?"Today":days===1?"Yesterday":days+"d ago";
+  return{color,label,days};
+};
+
+// ─── RESOURCE LINKS per subject ───────────────────────────────────────────────
+const RESOURCE_LINKS={
+  maths:       {sme:"https://www.savemyexams.com/gcse/maths/edexcel/",      pmt:"https://www.physicsandmathstutor.com/maths-revision/gcse-edexcel/"},
+  biology:     {sme:"https://www.savemyexams.com/gcse/biology/aqa/",        pmt:"https://www.physicsandmathstutor.com/biology-revision/gcse-aqa/"},
+  chemistry:   {sme:"https://www.savemyexams.com/gcse/chemistry/aqa/",      pmt:"https://www.physicsandmathstutor.com/chemistry-revision/gcse-aqa/"},
+  physics:     {sme:"https://www.savemyexams.com/gcse/physics/aqa/",        pmt:"https://www.physicsandmathstutor.com/physics-revision/gcse-aqa/"},
+  english_lang:{sme:"https://www.savemyexams.com/gcse/english-language/aqa/",pmt:"https://www.physicsandmathstutor.com/english-revision/gcse-aqa-english-language/"},
+  english_lit: {sme:"https://www.savemyexams.com/gcse/english-literature/aqa/",pmt:"https://www.physicsandmathstutor.com/english-revision/gcse-aqa-english-literature/"},
+  german:      {sme:"https://www.savemyexams.com/gcse/german/aqa/",         pmt:"https://www.physicsandmathstutor.com/german-revision/gcse-aqa/"},
+  geography:   {sme:"https://www.savemyexams.com/gcse/geography/aqa/",      pmt:"https://www.physicsandmathstutor.com/geography-revision/gcse-aqa/"},
+  cs:          {sme:"https://www.savemyexams.com/gcse/computer-science/ocr/",pmt:"https://www.physicsandmathstutor.com/computer-science-revision/gcse-ocr/"},
+  music:       {sme:"https://www.savemyexams.com/gcse/music/edexcel/",       pmt:"https://www.physicsandmathstutor.com/music-revision/gcse-edexcel/"},
+};
 
 const S={
   root:{fontFamily:"var(--font)"},
@@ -1043,6 +1114,87 @@ function PaperTrendGraph({papers,color}){
   </div>;
 }
 
+// ─── GRADE CALCULATOR ─────────────────────────────────────────────────────────
+function GradeCalculator({subjectId,color}){
+  const b=GRADE_BOUNDARIES[subjectId];
+  const [calcInput,setCalcInput]=useState("");
+  const [calcMode,setCalcMode]=useState("pct"); // "pct" | "raw"
+  const [targetGrade,setTargetGrade]=useState("7");
+  if(!b)return null;
+  const grades=Object.keys(b.pct).map(Number).sort((a,z)=>z-a);
+
+  const calcGrade=(()=>{
+    if(!calcInput)return null;
+    const v=parseFloat(calcInput);
+    if(isNaN(v))return null;
+    if(calcMode==="raw"){
+      // convert raw to pct
+      const pct=Math.round((v/b.max)*100);
+      return pctToGrade(subjectId,pct);
+    }
+    return pctToGrade(subjectId,v);
+  })();
+  const calcGradeColor=calcGrade===null?null:calcGrade==="U"?"#f87171":calcGrade>=7?"#4ade80":calcGrade>=5?"#fbbf24":"#fb923c";
+  const targetPct=b.pct[parseInt(targetGrade)];
+  const targetRaw=b.raw[parseInt(targetGrade)];
+
+  return <div style={{marginTop:14,borderTop:"1px solid var(--border)",paddingTop:14}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+      <div style={{fontSize:12,fontWeight:600,color:"var(--text2)"}}>📊 Grade Boundaries</div>
+      <div style={{fontSize:10,color:"var(--text3)"}}>Summer 2025 · {b.board}{b.tier?" · "+b.tier:""} · indicative only</div>
+    </div>
+
+    {/* Boundaries table — show both raw and % */}
+    <div style={{display:"flex",gap:3,marginBottom:14,flexWrap:"wrap"}}>
+      {grades.map(g=>{
+        const gColor=g>=9?"#c084fc":g>=7?"#4ade80":g>=5?"#fbbf24":g>=4?"#fb923c":"#f87171";
+        return <div key={g} style={{flex:"1 1 auto",minWidth:40,textAlign:"center",background:"var(--bg4)",borderRadius:6,padding:"6px 4px",border:`1px solid ${gColor}22`}}>
+          <div style={{fontSize:14,fontWeight:800,color:gColor,fontFamily:"var(--mono)"}}>{g}</div>
+          <div style={{fontSize:10,color:"var(--text)",marginTop:1,fontFamily:"var(--mono)",fontWeight:600}}>{b.raw[g]}</div>
+          <div style={{fontSize:9,color:"var(--text3)"}}>{b.pct[g]}%</div>
+        </div>;
+      })}
+    </div>
+
+    {/* Two calculators side by side */}
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+      {/* Score → grade */}
+      <div style={{background:"var(--bg4)",borderRadius:8,padding:"10px 12px",border:"1px solid var(--border)"}}>
+        <div style={{fontSize:11,color:"var(--text3)",marginBottom:6,textTransform:"uppercase",letterSpacing:1,fontFamily:"var(--mono)"}}>What's my grade?</div>
+        <div style={{display:"flex",gap:4,marginBottom:6}}>
+          {[["pct","%"],["raw","raw"]].map(([m,l])=>
+            <button key={m} onClick={()=>{setCalcMode(m);setCalcInput("");}}
+              style={{flex:1,padding:"3px 0",borderRadius:5,border:`1px solid ${calcMode===m?"var(--accent)":"var(--border)"}`,background:calcMode===m?"rgba(79,142,255,0.1)":"var(--bg3)",color:calcMode===m?"var(--accent)":"var(--text3)",fontSize:11,cursor:"pointer",fontFamily:"var(--font)"}}>{l}</button>
+          )}
+        </div>
+        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          <input type="number" min="0" max={calcMode==="raw"?b.max:100} value={calcInput} onChange={e=>setCalcInput(e.target.value)}
+            placeholder={calcMode==="raw"?`0–${b.max}`:"e.g. 72"}
+            style={{...S.input,padding:"6px 8px",fontSize:13,flex:1,width:0}} className="tracker-input"/>
+          <span style={{fontSize:12,color:"var(--text3)"}}>{calcMode==="pct"?"%":"marks"}</span>
+        </div>
+        {calcGrade!==null&&<div style={{marginTop:8,textAlign:"center"}}>
+          <span style={{fontSize:22,fontWeight:800,color:calcGradeColor,fontFamily:"var(--mono)"}}>{calcGrade==="U"?"U":calcGrade}</span>
+          <span style={{fontSize:12,color:"var(--text3)",marginLeft:6}}>grade</span>
+        </div>}
+      </div>
+
+      {/* Target grade → marks/% needed */}
+      <div style={{background:"var(--bg4)",borderRadius:8,padding:"10px 12px",border:"1px solid var(--border)"}}>
+        <div style={{fontSize:11,color:"var(--text3)",marginBottom:6,textTransform:"uppercase",letterSpacing:1,fontFamily:"var(--mono)"}}>What do I need?</div>
+        <select value={targetGrade} onChange={e=>setTargetGrade(e.target.value)} style={{...S.sel,height:"auto",marginBottom:8}}>
+          {grades.map(g=><option key={g} value={g}>Grade {g}</option>)}
+        </select>
+        <div style={{textAlign:"center"}}>
+          <span style={{fontSize:22,fontWeight:800,color:color,fontFamily:"var(--mono)"}}>{targetRaw}</span>
+          <span style={{fontSize:12,color:"var(--text3)",marginLeft:4}}>marks</span>
+          <span style={{fontSize:11,color:"var(--text3)",display:"block",marginTop:2}}>({targetPct}% of {b.max})</span>
+        </div>
+      </div>
+    </div>
+  </div>;
+}
+
 // ─── GRADE CARD (standalone to avoid remount issues) ────────────────────────
 function GradeCard({s,showProgress,getGrade,setGrade,getProgress}){
     const g=getGrade(s.id);
@@ -1053,6 +1205,7 @@ function GradeCard({s,showProgress,getGrade,setGrade,getProgress}){
 
     // Past papers state
     const [showPapers,setShowPapers]=useState(false);
+    const [showCalc,setShowCalc]=useState(false);
     const [addingPaper,setAddingPaper]=useState(false);
     const [np,setNp]=useState({name:"",date:"",score:"",total:""});
     const papers=g.papers||[];
@@ -1097,6 +1250,17 @@ function GradeCard({s,showProgress,getGrade,setGrade,getProgress}){
       </div>}
       <textarea placeholder="Notes..." value={g.notes} onChange={e=>setGrade(s.id,"notes",e.target.value)} style={S.notesArea} rows={2}/>
 
+      {/* Grade calculator — only for subjects with boundary data */}
+      {showProgress&&GRADE_BOUNDARIES[s.id]&&<div style={{marginTop:10}}>
+        <button onClick={()=>setShowCalc(p=>!p)} style={{...S.btn,width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:12,padding:"7px 12px"}}>
+          <span>📊 Grade Boundaries & Calculator</span>
+          <span>{showCalc?"▲":"▼"}</span>
+        </button>
+        {showCalc&&<div style={{background:"var(--bg4)",borderRadius:8,padding:"10px 14px",marginTop:6,border:"1px solid var(--border)"}}>
+          <GradeCalculator subjectId={s.id} color={actualColor}/>
+        </div>}
+      </div>}
+
       {/* Past papers section */}
       {showProgress&&<div style={{marginTop:12}}>
         <button onClick={()=>setShowPapers(p=>!p)} style={{...S.btn,width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:12,padding:"7px 12px"}}>
@@ -1109,6 +1273,7 @@ function GradeCard({s,showProgress,getGrade,setGrade,getProgress}){
           {[...papers].sort((a,b)=>b.date.localeCompare(a.date)).map(p=>{
             const pct=p.total&&p.score?Math.round((parseInt(p.score)/parseInt(p.total))*100):null;
             const pColor=pct===null?"var(--text2)":pct>=70?"var(--green)":pct>=50?"var(--amber)":"var(--red)";
+            const paperGrade=pct!==null?pctToGrade(s.id,pct):null;
             return <div key={p.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:"1px solid var(--border)"}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:12,color:"var(--text)",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.name||"Unnamed paper"}</div>
@@ -1117,6 +1282,7 @@ function GradeCard({s,showProgress,getGrade,setGrade,getProgress}){
               {pct!==null&&<div style={{textAlign:"right",flexShrink:0}}>
                 <div style={{fontSize:14,fontWeight:700,color:pColor,fontFamily:"var(--mono)"}}>{p.score}/{p.total}</div>
                 <div style={{fontSize:10,color:pColor}}>{pct}%</div>
+                {paperGrade!==null&&<div style={{fontSize:10,color:"var(--text3)",marginTop:1}}>≈ Grade {paperGrade}</div>}
               </div>}
               <button onClick={()=>removePaper(p.id)} style={{...S.btn,padding:"2px 7px",fontSize:10,color:"var(--text3)",flexShrink:0}}>✕</button>
             </div>;
@@ -1199,6 +1365,7 @@ function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getP
   const [gizmoLoading,setGizmoLoading]=useState(false);
   const [gizmoText,setGizmoText]=useState("");
   const [gizmoCopied,setGizmoCopied]=useState(false);
+  const [resourcesModal,setResourcesModal]=useState(null); // {subj, topic}
 
   const handleGizmoNotes=async(subj,topic,subtopic,rag)=>{
     const activeKey=aiConfig?.key;
@@ -1235,6 +1402,52 @@ function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getP
   };
 
   return <div>
+    {/* Resources modal */}
+    {resourcesModal&&(()=>{
+      const {subj,topic}=resourcesModal;
+      const q=encodeURIComponent(subj.board+" GCSE "+subj.name+" "+topic.name);
+      const links=RESOURCE_LINKS[subj.id]||{};
+      const yt1=`https://www.youtube.com/results?search_query=${q}+FreeScienceLessons`;
+      const yt2=`https://www.youtube.com/results?search_query=${q}+Cognito`;
+      const yt3=`https://www.youtube.com/results?search_query=${q}`;
+      return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",zIndex:400,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+        <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:16,padding:24,width:"100%",maxWidth:440}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+            <div style={{fontSize:14,fontWeight:700,color:"var(--text)"}}>📚 Resources</div>
+            <button onClick={()=>setResourcesModal(null)} style={{...S.btn,padding:"4px 10px"}}>✕</button>
+          </div>
+          <div style={{fontSize:12,color:"var(--text3)",marginBottom:16}}>{subj.name} · {topic.name}</div>
+
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            <div style={{fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1,fontFamily:"var(--mono)"}}>📺 YouTube</div>
+            {[["FreeScienceLessons",yt1,"#f87171"],["Cognito",yt2,"#fb923c"],["General search",yt3,"#8a9ab8"]].map(([label,url,col])=>
+              <a key={label} href={url} target="_blank" rel="noopener noreferrer"
+                style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:8,background:"var(--bg3)",border:`1px solid var(--border)`,textDecoration:"none",transition:"border-color 0.15s"}}>
+                <span style={{fontSize:18}}>▶</span>
+                <span style={{fontSize:13,color:"var(--text2)",flex:1}}>{label}</span>
+                <span style={{fontSize:10,color:col,fontFamily:"var(--mono)"}}>YouTube ↗</span>
+              </a>
+            )}
+            <div style={{fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1,fontFamily:"var(--mono)",marginTop:4}}>📝 Notes & Questions</div>
+            {[links.sme&&["SaveMyExams",links.sme,"var(--accent)"],links.pmt&&["Physics & Maths Tutor",links.pmt,"#34d399"]].filter(Boolean).map(([label,url,col])=>
+              <a key={label} href={url} target="_blank" rel="noopener noreferrer"
+                style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:8,background:"var(--bg3)",border:`1px solid var(--border)`,textDecoration:"none"}}>
+                <span style={{fontSize:18}}>📄</span>
+                <span style={{fontSize:13,color:"var(--text2)",flex:1}}>{label}</span>
+                <span style={{fontSize:10,color,fontFamily:"var(--mono)"}}>Notes ↗</span>
+              </a>
+            )}
+            <div style={{fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1,fontFamily:"var(--mono)",marginTop:4}}>🃏 Flashcards</div>
+            <button onClick={()=>{gizmoSearch(subj.name+" "+topic.name+" GCSE");setResourcesModal(null);}}
+              style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:8,background:"rgba(124,58,237,0.08)",border:"1px solid rgba(124,58,237,0.2)",cursor:"pointer",fontFamily:"var(--font)",textAlign:"left",width:"100%"}}>
+              <span style={{fontSize:18}}>🃏</span>
+              <span style={{fontSize:13,color:"var(--text2)",flex:1}}>Search on Gizmo</span>
+              <span style={{fontSize:10,color:"#a78bfa",fontFamily:"var(--mono)"}}>Copy & open ↗</span>
+            </button>
+          </div>
+        </div>
+      </div>;
+    })()}
     {gizmoSearchModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.78)",zIndex:300,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:16,overflowY:"auto"}}>
       <div style={{background:"var(--bg2)",border:"1px solid rgba(124,58,237,0.4)",borderRadius:16,padding:28,width:"100%",maxWidth:420,marginTop:40,marginBottom:16}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
@@ -1323,6 +1536,8 @@ function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getP
                   <span style={{color:"#c8d5e8",fontWeight:600,fontSize:13}}>{t.name}</span>
                   <div style={{display:"flex",alignItems:"center",gap:8}}>
                     <span style={{fontSize:11,color:"var(--green)"}}>✓ {tGreen}/{t.subtopics.length}</span>
+                    <button onClick={e=>{e.stopPropagation();setResourcesModal({subj:s,topic:t});}}
+                      style={{fontSize:11,padding:"2px 8px",borderRadius:5,border:"1px solid var(--border)",background:"var(--bg3)",color:"var(--text3)",cursor:"pointer",fontFamily:"var(--font)"}}>📚</button>
                     <span style={{color:"var(--text3)",fontSize:14}}>{tOpen?"▲":"▼"}</span>
                   </div>
                 </button>
@@ -1346,6 +1561,12 @@ function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getP
                                 }}/>)}
                               </div>
                               <input type="date" value={v.date} onChange={e=>setVal(s.id,t.id,i,"date",e.target.value)} style={{...S.specDate,fontSize:11,flex:1,minWidth:110}}/>
+                              {(()=>{
+                                if(v.rag==="None")return null;
+                                const info=lastRevisedInfo(v.date);
+                                if(!info)return <span style={{fontSize:10,color:"var(--text3)"}}>no date</span>;
+                                return <span style={{fontSize:10,color:info.color,fontWeight:600,background:info.color+"18",borderRadius:4,padding:"2px 5px",fontFamily:"var(--mono)"}}>{info.label}</span>;
+                              })()}
                               <div style={{display:"flex",gap:4}}>
                                 <button onClick={()=>gizmoSearch(s.name+" "+st+" GCSE")} title="Open Gizmo"
                                   style={{display:"flex",alignItems:"center",justifyContent:"center",width:26,height:26,background:"rgba(124,58,237,0.12)",border:"1px solid rgba(124,58,237,0.25)",borderRadius:6,fontSize:12,cursor:"pointer",color:"#a78bfa",padding:0}}>🃏</button>
@@ -1377,6 +1598,12 @@ function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getP
                               }}/>)}
                             </div>
                             <input type="date" value={v.date} onChange={e=>setVal(s.id,t.id,i,"date",e.target.value)} style={{...S.specDate,flex:2}}/>
+                            {(()=>{
+                              if(v.rag==="None")return null;
+                              const info=lastRevisedInfo(v.date);
+                              if(!info)return <span style={{fontSize:10,color:"var(--text3)",fontFamily:"var(--mono)",whiteSpace:"nowrap"}}>no date</span>;
+                              return <span style={{fontSize:10,fontFamily:"var(--mono)",color:info.color,fontWeight:600,whiteSpace:"nowrap",background:info.color+"18",borderRadius:4,padding:"2px 5px"}}>{info.label}</span>;
+                            })()}
                             <div style={{display:"flex",gap:3,flexShrink:0}}>
                               <button onClick={()=>gizmoSearch(s.name+" "+st+" GCSE")} title="Copy topic name & open Gizmo"
                                 style={{display:"flex",alignItems:"center",justifyContent:"center",width:22,height:22,background:"rgba(124,58,237,0.12)",border:"1px solid rgba(124,58,237,0.25)",borderRadius:4,fontSize:10,cursor:"pointer",color:"#a78bfa",padding:0}}>🃏</button>
@@ -2003,7 +2230,69 @@ function ShortcutsModal({onClose}){
   </div>;
 }
 
-// ─── MAIN APP ─────────────────────────────────────────────────────────────────
+// ─── FEEDBACK MODAL ───────────────────────────────────────────────────────────
+function FeedbackModal({onClose,user,yearGroup}){
+  const TYPES=["Feature request","Bug report","New subject / spec","Other"];
+  const [type,setType]=useState("Feature request");
+  const [message,setMessage]=useState("");
+  const [sending,setSending]=useState(false);
+  const [sent,setSent]=useState(false);
+  const [error,setError]=useState("");
+
+  const send=async()=>{
+    if(!message.trim()){setError("Please write something before sending.");return;}
+    setSending(true);setError("");
+    try{
+      await window.__firebase.sendFeatureRequest(user.username,yearGroup||"?",type,message);
+      setSent(true);
+    }catch(e){setError("Failed to send — check your connection and try again.");}
+    setSending(false);
+  };
+
+  return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.78)",zIndex:250,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+    <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:16,padding:28,width:"100%",maxWidth:440}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+        <div style={{fontSize:15,fontWeight:700,color:"var(--text)"}}>💬 Send Feedback</div>
+        <button onClick={onClose} style={{...S.btn,padding:"4px 10px"}}>✕</button>
+      </div>
+      <p style={{fontSize:12,color:"var(--text3)",marginBottom:20,lineHeight:1.6}}>Got an idea, found a bug, or want a new subject added? Send it directly to the developer.</p>
+
+      {sent
+        ?<div style={{textAlign:"center",padding:"24px 0"}}>
+          <div style={{fontSize:36,marginBottom:12}}>✅</div>
+          <div style={{fontSize:14,fontWeight:700,color:"var(--green)",marginBottom:6}}>Sent!</div>
+          <div style={{fontSize:12,color:"var(--text3)",marginBottom:20}}>Thanks — your feedback has been logged.</div>
+          <button onClick={onClose} style={{...S.btnBlue,padding:"8px 24px"}}>Close</button>
+        </div>
+        :<div style={{display:"flex",flexDirection:"column",gap:14}}>
+          <div>
+            <div style={{fontSize:11,color:"var(--text3)",marginBottom:8,textTransform:"uppercase",letterSpacing:1,fontFamily:"var(--mono)"}}>Type</div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {TYPES.map(t=><button key={t} onClick={()=>setType(t)} style={{padding:"6px 12px",borderRadius:7,border:`1px solid ${type===t?"var(--accent)":"var(--border)"}`,background:type===t?"rgba(79,142,255,0.12)":"var(--bg3)",color:type===t?"var(--accent)":"var(--text2)",fontSize:12,cursor:"pointer",fontFamily:"var(--font)",transition:"all 0.12s"}}>{t}</button>)}
+            </div>
+          </div>
+          <div>
+            <div style={{fontSize:11,color:"var(--text3)",marginBottom:6,textTransform:"uppercase",letterSpacing:1,fontFamily:"var(--mono)"}}>Message</div>
+            <textarea value={message} onChange={e=>setMessage(e.target.value)} placeholder={
+              type==="Feature request"?"e.g. Add a dark mode toggle to the settings...":
+              type==="Bug report"?"e.g. The timetable doesn't save on mobile...":
+              type==="New subject / spec"?"e.g. French GCSE AQA spec — topics and subtopics...":
+              "Write anything..."
+            } style={{...S.notesArea,minHeight:100,marginTop:0}} className="tracker-input"/>
+            <div style={{fontSize:10,color:"var(--text3)",marginTop:4}}>{message.length}/500</div>
+          </div>
+          {error&&<div style={{fontSize:12,color:"var(--red)",background:"rgba(248,113,113,0.08)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:7,padding:"8px 12px"}}>{error}</div>}
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={send} disabled={sending||!message.trim()||message.length>500} style={{...S.btnBlue,opacity:(sending||!message.trim()||message.length>500)?0.5:1}}>{sending?"Sending...":"Send feedback"}</button>
+            <button onClick={onClose} style={S.btn}>Cancel</button>
+          </div>
+        </div>
+      }
+    </div>
+  </div>;
+}
+
+
 function App(){
   const [user,setUser]=useState(null);
   const [tab,setTab]=useState("dashboard");
@@ -2031,6 +2320,7 @@ function App(){
   const setWeeklyGoalMins=v=>{setWeeklyGoalMinsRaw(v);localStorage.setItem('gcse_weeklyGoal',String(v));};
   const [yearGroup,setYearGroupRaw]=useState("11");
   const [showYearModal,setShowYearModal]=useState(false);
+  const [showFeedback,setShowFeedback]=useState(false);
   const saveTimer=useRef(null);
   const menuRef=useRef(null);
   const tabMenuRef=useRef(null);
@@ -2216,6 +2506,7 @@ function App(){
   return <div style={S.root}>
     {showSettings&&<Settings groqKey={groqKey} setGroqKey={setGroqKey} openrouterKey={openrouterKey} setOpenrouterKey={setOpenrouterKey} aiProvider={aiProvider} setAiProvider={setAiProvider} onClose={()=>setShowSettings(false)}/>}
     {showShortcuts&&<ShortcutsModal onClose={()=>setShowShortcuts(false)}/>}
+    {showFeedback&&<FeedbackModal onClose={()=>setShowFeedback(false)} user={user} yearGroup={yearGroup}/>}
 
     {/* Year group edit modal */}
     {showYearModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.82)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
@@ -2282,6 +2573,7 @@ function App(){
               </label>
               <div style={{borderTop:"1px solid var(--border)",margin:"4px 0"}}/>
               <MenuBtn icon="⌨️" label="Keyboard shortcuts" onClick={()=>{setShowShortcuts(true);setShowMenu(false);}}/>
+              <MenuBtn icon="💬" label="Send feedback" onClick={()=>{setShowFeedback(true);setShowMenu(false);}}/>
               <MenuBtn icon="🚪" label="Log out" onClick={()=>{handleLogout();setShowMenu(false);}} danger={true}/>
             </div>}
           </div>
