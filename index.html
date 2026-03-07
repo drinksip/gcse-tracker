@@ -1344,6 +1344,51 @@ function Grades({grades,setGrades,getProgress,assignedSubjectIds}){
   </div>;
 }
 
+// ─── RESOURCES MODAL ─────────────────────────────────────────────────────────
+function ResourcesModal({subj,topic,onClose,gizmoSearch,setResourcesModal}){
+  const q=encodeURIComponent(subj.board+" GCSE "+subj.name+" "+topic.name);
+  const links=RESOURCE_LINKS[subj.id]||{};
+  const yt1=`https://www.youtube.com/results?search_query=${q}+FreeScienceLessons`;
+  const yt2=`https://www.youtube.com/results?search_query=${q}+Cognito`;
+  const yt3=`https://www.youtube.com/results?search_query=${q}`;
+  return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",zIndex:400,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+    <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:16,padding:24,width:"100%",maxWidth:440}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+        <div style={{fontSize:14,fontWeight:700,color:"var(--text)"}}>📚 Resources</div>
+        <button onClick={onClose} style={{...S.btn,padding:"4px 10px"}}>✕</button>
+      </div>
+      <div style={{fontSize:12,color:"var(--text3)",marginBottom:16}}>{subj.name} · {topic.name}</div>
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        <div style={{fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1,fontFamily:"var(--mono)"}}>📺 YouTube</div>
+        {[["FreeScienceLessons",yt1,"#f87171"],["Cognito",yt2,"#fb923c"],["General search",yt3,"#8a9ab8"]].map(([label,url,col])=>
+          <a key={label} href={url} target="_blank" rel="noopener noreferrer"
+            style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:8,background:"var(--bg3)",border:"1px solid var(--border)",textDecoration:"none"}}>
+            <span style={{fontSize:18}}>▶</span>
+            <span style={{fontSize:13,color:"var(--text2)",flex:1}}>{label}</span>
+            <span style={{fontSize:10,color:col,fontFamily:"var(--mono)"}}>YouTube ↗</span>
+          </a>
+        )}
+        <div style={{fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1,fontFamily:"var(--mono)",marginTop:4}}>📝 Notes & Questions</div>
+        {[links.sme&&["SaveMyExams",links.sme,"var(--accent)"],links.pmt&&["Physics & Maths Tutor",links.pmt,"#34d399"]].filter(Boolean).map(([label,url,col])=>
+          <a key={label} href={url} target="_blank" rel="noopener noreferrer"
+            style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:8,background:"var(--bg3)",border:"1px solid var(--border)",textDecoration:"none"}}>
+            <span style={{fontSize:18}}>📄</span>
+            <span style={{fontSize:13,color:"var(--text2)",flex:1}}>{label}</span>
+            <span style={{fontSize:10,color:col,fontFamily:"var(--mono)"}}>Notes ↗</span>
+          </a>
+        )}
+        <div style={{fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1,fontFamily:"var(--mono)",marginTop:4}}>🃏 Flashcards</div>
+        <button onClick={()=>{gizmoSearch(subj.name+" "+topic.name+" GCSE");onClose();}}
+          style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:8,background:"rgba(124,58,237,0.08)",border:"1px solid rgba(124,58,237,0.2)",cursor:"pointer",fontFamily:"var(--font)",textAlign:"left",width:"100%"}}>
+          <span style={{fontSize:18}}>🃏</span>
+          <span style={{fontSize:13,color:"var(--text2)",flex:1}}>Search on Gizmo</span>
+          <span style={{fontSize:10,color:"#a78bfa",fontFamily:"var(--mono)"}}>Copy & open ↗</span>
+        </button>
+      </div>
+    </div>
+  </div>;
+}
+
 // ─── SPEC TRACKER ─────────────────────────────────────────────────────────────
 function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getProgress,assignedSubjectIds,user,specRequests,setSpecRequests,aiConfig}){
   const toggleTopic=id=>setExpTopic(p=>({...p,[id]:!p[id]}));
@@ -1403,51 +1448,7 @@ function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getP
 
   return <div>
     {/* Resources modal */}
-    {resourcesModal&&(()=>{
-      const {subj,topic}=resourcesModal;
-      const q=encodeURIComponent(subj.board+" GCSE "+subj.name+" "+topic.name);
-      const links=RESOURCE_LINKS[subj.id]||{};
-      const yt1=`https://www.youtube.com/results?search_query=${q}+FreeScienceLessons`;
-      const yt2=`https://www.youtube.com/results?search_query=${q}+Cognito`;
-      const yt3=`https://www.youtube.com/results?search_query=${q}`;
-      return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",zIndex:400,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-        <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:16,padding:24,width:"100%",maxWidth:440}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-            <div style={{fontSize:14,fontWeight:700,color:"var(--text)"}}>📚 Resources</div>
-            <button onClick={()=>setResourcesModal(null)} style={{...S.btn,padding:"4px 10px"}}>✕</button>
-          </div>
-          <div style={{fontSize:12,color:"var(--text3)",marginBottom:16}}>{subj.name} · {topic.name}</div>
-
-          <div style={{display:"flex",flexDirection:"column",gap:8}}>
-            <div style={{fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1,fontFamily:"var(--mono)"}}>📺 YouTube</div>
-            {[["FreeScienceLessons",yt1,"#f87171"],["Cognito",yt2,"#fb923c"],["General search",yt3,"#8a9ab8"]].map(([label,url,col])=>
-              <a key={label} href={url} target="_blank" rel="noopener noreferrer"
-                style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:8,background:"var(--bg3)",border:`1px solid var(--border)`,textDecoration:"none",transition:"border-color 0.15s"}}>
-                <span style={{fontSize:18}}>▶</span>
-                <span style={{fontSize:13,color:"var(--text2)",flex:1}}>{label}</span>
-                <span style={{fontSize:10,color:col,fontFamily:"var(--mono)"}}>YouTube ↗</span>
-              </a>
-            )}
-            <div style={{fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1,fontFamily:"var(--mono)",marginTop:4}}>📝 Notes & Questions</div>
-            {[links.sme&&["SaveMyExams",links.sme,"var(--accent)"],links.pmt&&["Physics & Maths Tutor",links.pmt,"#34d399"]].filter(Boolean).map(([label,url,col])=>
-              <a key={label} href={url} target="_blank" rel="noopener noreferrer"
-                style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:8,background:"var(--bg3)",border:`1px solid var(--border)`,textDecoration:"none"}}>
-                <span style={{fontSize:18}}>📄</span>
-                <span style={{fontSize:13,color:"var(--text2)",flex:1}}>{label}</span>
-                <span style={{fontSize:10,color,fontFamily:"var(--mono)"}}>Notes ↗</span>
-              </a>
-            )}
-            <div style={{fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1,fontFamily:"var(--mono)",marginTop:4}}>🃏 Flashcards</div>
-            <button onClick={()=>{gizmoSearch(subj.name+" "+topic.name+" GCSE");setResourcesModal(null);}}
-              style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:8,background:"rgba(124,58,237,0.08)",border:"1px solid rgba(124,58,237,0.2)",cursor:"pointer",fontFamily:"var(--font)",textAlign:"left",width:"100%"}}>
-              <span style={{fontSize:18}}>🃏</span>
-              <span style={{fontSize:13,color:"var(--text2)",flex:1}}>Search on Gizmo</span>
-              <span style={{fontSize:10,color:"#a78bfa",fontFamily:"var(--mono)"}}>Copy & open ↗</span>
-            </button>
-          </div>
-        </div>
-      </div>;
-    })()}
+    {resourcesModal&&<ResourcesModal subj={resourcesModal.subj} topic={resourcesModal.topic} onClose={()=>setResourcesModal(null)} gizmoSearch={gizmoSearch} setResourcesModal={setResourcesModal}/>}
     {gizmoSearchModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.78)",zIndex:300,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:16,overflowY:"auto"}}>
       <div style={{background:"var(--bg2)",border:"1px solid rgba(124,58,237,0.4)",borderRadius:16,padding:28,width:"100%",maxWidth:420,marginTop:40,marginBottom:16}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
