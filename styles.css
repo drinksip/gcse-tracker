@@ -111,11 +111,85 @@ input:-webkit-autofill {
   color: var(--text2) !important;
 }
 
+/* ── RESPONSIVE ─────────────────────────────────────────── */
+
+/* Tablet */
+@media (max-width: 900px) {
+  html { font-size: 14px; }
+
+  .app-header { padding: 12px 16px 0 !important; }
+  .app-header-inner { margin-bottom: 10px !important; }
+  .app-body { padding: 18px 16px !important; }
+
+  .app-tab-bar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .app-tab-bar::-webkit-scrollbar { display: none; }
+
+  .timetable-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+  }
+
+  .ai-panel { flex-direction: column !important; }
+  .ai-sidebar { width: 100% !important; border-right: none !important; border-bottom: 1px solid var(--border) !important; max-height: 180px !important; }
+}
+
+/* Mobile */
 @media (max-width: 640px) {
-  .tracker-body {
-    padding: 14px !important;
+  html { font-size: 13px; }
+
+  .app-header { padding: 10px 12px 0 !important; }
+  .app-header-inner { gap: 8px !important; margin-bottom: 8px !important; }
+  .app-title { font-size: 14px !important; }
+  .app-logo { width: 32px !important; height: 32px !important; font-size: 16px !important; }
+
+  .app-header-right { gap: 5px !important; }
+  .header-saved-badge { display: none !important; }
+  .header-ai-badge { display: none !important; }
+
+  .app-tab-bar { gap: 0 !important; }
+  .app-tab-btn {
+    padding: 8px 10px !important;
+    font-size: 11px !important;
   }
-  .tracker-header {
-    padding: 12px 16px 0 !important;
+
+  .app-body { padding: 12px !important; }
+
+  .timetable-scroll { border-radius: 6px; }
+  .timetable-scroll table { min-width: 540px; }
+
+  .provider-selector { flex-direction: column !important; }
+
+  .settings-modal {
+    padding: 18px !important;
+    border-radius: 12px !important;
+    max-height: 95vh !important;
   }
+
+  .pomodoro-modal {
+    padding: 16px !important;
+    min-width: unset !important;
+    width: calc(100vw - 32px) !important;
+  }
+
+  .rate-limits { flex-direction: row !important; }
+  .rate-limit-card { min-width: 0 !important; flex: 1 !important; }
+
+  .grades-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .grades-scroll table { min-width: 480px; }
+
+  .spec-header-row { flex-wrap: wrap; gap: 4px !important; }
+  .spec-row { flex-wrap: wrap; gap: 4px !important; }
+
+  .ai-panel { flex-direction: column !important; height: auto !important; }
+  .ai-sidebar { width: 100% !important; border-right: none !important; border-bottom: 1px solid var(--border) !important; height: auto !important; max-height: 160px !important; }
+  .ai-main { height: 420px !important; }
+
+  .chat-input-row { gap: 6px !important; }
+  .chat-send-btn { padding: 8px 12px !important; font-size: 12px !important; }
 }

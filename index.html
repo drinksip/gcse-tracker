@@ -335,7 +335,7 @@ function Settings({groqKey,setGroqKey,openrouterKey,setOpenrouterKey,aiProvider,
 
   const providerInfo={
     groq:{
-      label:"Groq (Llama 3.3 70B)",badge:"⭐ Recommended · Free · No age restriction",color:"#7c3aed",
+      label:"Groq (Llama 3.3 70B)",badge:"⭐ Recommended · Free · No card needed",color:"#7c3aed",
       steps:[
         ["1","Go to Groq Console","Click the link below — just needs an email, no age restriction."],
         ["2","Sign up or log in","Create a free account. No credit card required."],
@@ -370,7 +370,7 @@ function Settings({groqKey,setGroqKey,openrouterKey,setOpenrouterKey,aiProvider,
   const currentKey=prov==="openrouter"?ork:gk;
 
   return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-    <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:16,padding:"32px",width:"100%",maxWidth:560,maxHeight:"90vh",overflowY:"auto"}}>
+    <div className="settings-modal" style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:16,padding:"32px",width:"100%",maxWidth:560,maxHeight:"90vh",overflowY:"auto"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <div style={{fontSize:16,fontWeight:700,color:"var(--text)"}}>🤖 AI Setup</div>
         <button onClick={onClose} style={{...S.btn,padding:"4px 10px"}}>✕ Close</button>
@@ -379,7 +379,7 @@ function Settings({groqKey,setGroqKey,openrouterKey,setOpenrouterKey,aiProvider,
       {/* Provider selector */}
       <div style={{marginBottom:20}}>
         <div style={{fontSize:11,color:"var(--text3)",marginBottom:8,textTransform:"uppercase",letterSpacing:1,fontFamily:"var(--mono)"}}>Choose AI Provider</div>
-        <div style={{display:"flex",gap:8}}>
+        <div className="provider-selector" style={{display:"flex",gap:8}}>
           {Object.entries(providerInfo).map(([id,pi])=><button key={id} onClick={()=>setProv(id)} style={{flex:1,padding:"10px 14px",borderRadius:10,border:`2px solid ${prov===id?pi.color:"var(--border)"}`,background:prov===id?pi.color+"18":"var(--bg3)",cursor:"pointer",transition:"all 0.15s",fontFamily:"var(--font)"}}>
             <div style={{fontWeight:700,color:prov===id?pi.color:"var(--text2)",fontSize:13}}>{pi.label}</div>
             <div style={{fontSize:10,color:"var(--text3)",marginTop:3}}>{pi.badge}</div>
@@ -536,7 +536,7 @@ function Timetable({timetable,setTimetable,tests,setTests,groqKey,openrouterKey,
     <p style={{color:"var(--text3)",fontSize:12,marginBottom:16,marginTop:4}}>Mon-Sat · Hold Ctrl (or Cmd on Mac) to select multiple subjects per cell.</p>
 
     {/* Timetable grid */}
-    <div style={{marginBottom:20,overflowX:"auto"}}>
+    <div className="timetable-scroll" style={{marginBottom:20,overflowX:"auto"}}>
       <table style={S.table}><thead><tr>
         <th style={S.th}>Day</th>
         {SLOTS.map(slot=><th key={slot} style={S.th}>{slot}</th>)}
@@ -773,8 +773,8 @@ function AICoach({groqKey,openrouterKey,aiProvider,subtopicData,tests,chats,setC
       Ask me anything about your revision. Chats are saved automatically.
       {!(aiProvider==="openrouter"?openrouterKey:groqKey)&&<span style={{color:"var(--red)"}}> (Add an AI key in AI Setup to use this)</span>}
     </p>
-    <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:10,display:"flex",height:500,overflow:"hidden"}}>
-      <div style={sidebarStyle}>
+    <div className="ai-panel" style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:10,display:"flex",height:500,overflow:"hidden"}}>
+      <div className="ai-sidebar" style={sidebarStyle}>
         <div style={{padding:"10px 14px",fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1,borderBottom:"1px solid #1e293b",display:"flex",justifyContent:"space-between",alignItems:"center",fontFamily:"var(--mono)"}}>
           <span>Chats</span>
           <button onClick={createChat} style={{...S.btn,padding:"2px 8px",fontSize:11}}>＋</button>
@@ -789,7 +789,7 @@ function AICoach({groqKey,openrouterKey,aiProvider,subtopicData,tests,chats,setC
         </div>
         {activeChatId&&<button onClick={()=>deleteChat(activeChatId)} style={{...S.btn,margin:8,fontSize:11,color:"var(--red)",borderColor:"rgba(248,113,113,0.2)"}}>🗑 Delete chat</button>}
       </div>
-      <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
+      <div className="ai-main" style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
         {!activeChatId
           ?<div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
             <div style={{textAlign:"center",marginBottom:24}}>
@@ -797,10 +797,10 @@ function AICoach({groqKey,openrouterKey,aiProvider,subtopicData,tests,chats,setC
               <div style={{color:"var(--text3)",fontSize:14,marginBottom:8}}>No chat selected</div>
               <div style={{color:"var(--text3)",fontSize:12}}>Start typing to create a new chat</div>
             </div>
-            <div style={{width:"100%",borderTop:"1px solid #1e293b",padding:12,display:"flex",gap:8,background:"var(--bg2)",marginTop:"auto"}}>
+            <div className="chat-input-row" style={{width:"100%",borderTop:"1px solid #1e293b",padding:12,display:"flex",gap:8,background:"var(--bg2)",marginTop:"auto"}}>
               <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&!loading&&send()}
                 placeholder="Ask anything about your revision..." style={{...S.input,fontSize:12,flex:1}}/>
-              <button onClick={send} disabled={loading||!input.trim()} style={{...S.btnBlue,padding:"8px 16px",opacity:(loading||!input.trim())?0.5:1}}>Send</button>
+              <button className="chat-send-btn" onClick={send} disabled={loading||!input.trim()} style={{...S.btnBlue,padding:"8px 16px",opacity:(loading||!input.trim())?0.5:1}}>Send</button>
             </div>
           </div>
           :<div style={{display:"flex",flexDirection:"column",flex:1,minHeight:0}}>
@@ -813,10 +813,10 @@ function AICoach({groqKey,openrouterKey,aiProvider,subtopicData,tests,chats,setC
               {loading&&<div style={{display:"flex"}}><div style={{background:"var(--bg3)",borderRadius:10,padding:"10px 14px",fontSize:13,color:"var(--text3)",border:"1px solid var(--border)"}}>Thinking...</div></div>}
               <div ref={endRef}/>
             </div>
-            <div style={{borderTop:"1px solid #1e293b",padding:12,display:"flex",gap:8,background:"var(--bg2)",flexShrink:0}}>
+            <div className="chat-input-row" style={{borderTop:"1px solid #1e293b",padding:12,display:"flex",gap:8,background:"var(--bg2)",flexShrink:0}}>
               <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&!loading&&send()}
                 placeholder="Ask anything about your revision..." style={{...S.input,fontSize:12,flex:1}}/>
-              <button onClick={send} disabled={loading||!input.trim()} style={{...S.btnBlue,padding:"8px 16px",opacity:(loading||!input.trim())?0.5:1}}>Send</button>
+              <button className="chat-send-btn" onClick={send} disabled={loading||!input.trim()} style={{...S.btnBlue,padding:"8px 16px",opacity:(loading||!input.trim())?0.5:1}}>Send</button>
             </div>
           </div>
         }
@@ -1547,15 +1547,15 @@ function App(){
   return <div style={S.root}>
     {showSettings&&<Settings groqKey={groqKey} setGroqKey={setGroqKey} openrouterKey={openrouterKey} setOpenrouterKey={setOpenrouterKey} aiProvider={aiProvider} setAiProvider={setAiProvider} onClose={()=>setShowSettings(false)}/>}
     {showShortcuts&&<ShortcutsModal onClose={()=>setShowShortcuts(false)}/>}
-    <div style={S.header}>
-      <div style={S.headerInner}>
+    <div style={S.header} className="app-header">
+      <div style={S.headerInner} className="app-header-inner">
         <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <div style={{width:40,height:40,background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,boxShadow:"0 0 12px rgba(79,142,255,0.1)"}}>📋</div>
-          <div style={S.title}>GCSE Revision Tracker</div>
+          <div className="app-logo" style={{width:40,height:40,background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,boxShadow:"0 0 12px rgba(79,142,255,0.1)"}}>📋</div>
+          <div style={S.title} className="app-title">GCSE Revision Tracker</div>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <span style={{fontSize:11,color:saving?"var(--text3)":"var(--green)",fontFamily:"var(--mono)",background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:6,padding:"3px 10px",transition:"color 0.3s"}}>{saving?"⟳ Saving":"✓ Saved"}</span>
-          {(aiProvider==="openrouter"?openrouterKey:groqKey)&&<span style={{fontSize:11,color:"var(--green)",background:"rgba(74,222,128,0.1)",border:"1px solid rgba(74,222,128,0.2)",borderRadius:4,padding:"2px 7px"}}>🤖 {aiProvider==="openrouter"?"OpenRouter":"Groq"}</span>}
+        <div style={{display:"flex",alignItems:"center",gap:8}} className="app-header-right">
+          <span className="header-saved-badge" style={{fontSize:11,color:saving?"var(--text3)":"var(--green)",fontFamily:"var(--mono)",background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:6,padding:"3px 10px",transition:"color 0.3s"}}>{saving?"⟳ Saving":"✓ Saved"}</span>
+          {(aiProvider==="openrouter"?openrouterKey:groqKey)&&<span className="header-ai-badge" style={{fontSize:11,color:"var(--green)",background:"rgba(74,222,128,0.1)",border:"1px solid rgba(74,222,128,0.2)",borderRadius:4,padding:"2px 7px"}}>🤖 {aiProvider==="openrouter"?"OpenRouter":"Groq"}</span>}
           <button onClick={()=>setShowPomodoro(true)} style={{...S.btn,color:"#f87171",borderColor:"rgba(248,113,113,0.3)"}}>🍅</button>
           {/* Menu */}
           <div ref={menuRef} style={{position:"relative"}}>
@@ -1584,13 +1584,13 @@ function App(){
           </div>
         </div>
       </div>
-      <div style={S.tabBar}>
+      <div style={S.tabBar} className="app-tab-bar">
         {[["timetable","📅 Timetable"],["grades","📊 Grades"],["spec","📖 Spec Tracker"],["ai","🤖 AI Coach"],["log","📓 Rev. Log"]].map(([id,label])=>
-          <button key={id} style={{...S.tabBtn,...(tab===id?S.tabActive:{})}} onClick={()=>setTab(id)}>{label}</button>
+          <button key={id} className="app-tab-btn" style={{...S.tabBtn,...(tab===id?S.tabActive:{})}} onClick={()=>setTab(id)}>{label}</button>
         )}
       </div>
     </div>
-    <div style={S.body}>
+    <div style={S.body} className="app-body">
       {showPomodoro&&<PomodoroTimer onClose={()=>setShowPomodoro(false)} assignedSubjectIds={assignedSubjectIds} revisionLog={revisionLog} setRevisionLog={setRevisionLog}/>}
       {tab==="timetable"&&<Timetable timetable={timetable} setTimetable={setTimetable} tests={tests} setTests={setTests} groqKey={groqKey} openrouterKey={openrouterKey} aiProvider={aiProvider} getProgress={getProgress} subtopicData={subtopicData} setShowSettings={setShowSettings}/>}
       {tab==="grades"&&<Grades grades={grades} setGrades={setGrades} getProgress={getProgress} assignedSubjectIds={assignedSubjectIds}/>}
