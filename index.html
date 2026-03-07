@@ -369,8 +369,8 @@ function Settings({groqKey,setGroqKey,openrouterKey,setOpenrouterKey,aiProvider,
   const info=providerInfo[prov];
   const currentKey=prov==="openrouter"?ork:gk;
 
-  return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-    <div className="settings-modal" style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:16,padding:"32px",width:"100%",maxWidth:560,maxHeight:"90vh",overflowY:"auto"}}>
+  return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:200,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:16,overflowY:"auto"}}>
+    <div className="settings-modal" style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:16,padding:"32px",width:"100%",maxWidth:560,maxHeight:"none",marginTop:8,marginBottom:8}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <div style={{fontSize:16,fontWeight:700,color:"var(--text)"}}>🤖 AI Setup</div>
         <button onClick={onClose} style={{...S.btn,padding:"4px 10px"}}>✕ Close</button>
@@ -903,8 +903,9 @@ function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getP
   const [gizmoToast,setGizmoToast]=useState(false);
   const gizmoSearch=(q)=>{
     try{navigator.clipboard.writeText(q);}catch(e){}
+    window.open("https://app.gizmo.ai/decks/public","_blank");
     setGizmoToast(q);
-    setTimeout(()=>{window.open("https://app.gizmo.ai/decks/public","_blank");setGizmoToast(false);},2200);
+    setTimeout(()=>setGizmoToast(false),2200);
   };
   const [confirming,setConfirming]=useState(null);
   const [reqLoading,setReqLoading]=useState(false);
