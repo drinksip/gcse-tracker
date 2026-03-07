@@ -900,12 +900,10 @@ function Grades({grades,setGrades,getProgress,assignedSubjectIds}){
 function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getProgress,assignedSubjectIds,user,specRequests,setSpecRequests,aiConfig}){
   const toggleTopic=id=>setExpTopic(p=>({...p,[id]:!p[id]}));
   const [reqBoard,setReqBoard]=useState({});
-  const [gizmoToast,setGizmoToast]=useState(false);
+  const [gizmoSearchModal,setGizmoSearchModal]=useState(null);
   const gizmoSearch=(q)=>{
     try{navigator.clipboard.writeText(q);}catch(e){}
-    window.open("https://app.gizmo.ai/decks/public","_blank");
-    setGizmoToast(q);
-    setTimeout(()=>setGizmoToast(false),2200);
+    setGizmoSearchModal(q);
   };
   const [confirming,setConfirming]=useState(null);
   const [reqLoading,setReqLoading]=useState(false);
@@ -949,11 +947,26 @@ function SpecTracker({expSubj,setExpSubj,expTopic,setExpTopic,getVal,setVal,getP
   };
 
   return <div>
-    {gizmoToast&&<div style={{position:"fixed",bottom:28,left:"50%",transform:"translateX(-50%)",background:"#1a2540",border:"1px solid rgba(124,58,237,0.4)",borderRadius:12,padding:"14px 22px",zIndex:500,boxShadow:"0 8px 32px rgba(0,0,0,0.4)",textAlign:"center",minWidth:300,maxWidth:420}}>
-      <div style={{fontSize:16,marginBottom:6}}>🃏</div>
-      <div style={{fontSize:13,fontWeight:600,color:"var(--text)",marginBottom:4}}>Redirecting to Gizmo...</div>
-      <div style={{fontSize:11,color:"var(--text3)",lineHeight:1.6}}>Search term copied to clipboard.<br/>Just paste it into the Gizmo search bar.</div>
-      <div style={{fontSize:10,color:"#a78bfa",marginTop:8,fontFamily:"var(--mono)",background:"rgba(124,58,237,0.1)",borderRadius:6,padding:"4px 10px",display:"inline-block"}}>"{gizmoToast}"</div>
+    {gizmoSearchModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.78)",zIndex:300,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:16,overflowY:"auto"}}>
+      <div style={{background:"var(--bg2)",border:"1px solid rgba(124,58,237,0.4)",borderRadius:16,padding:28,width:"100%",maxWidth:420,marginTop:40,marginBottom:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <div style={{fontSize:15,fontWeight:700,color:"var(--text)"}}>🃏 Open in Gizmo</div>
+          <button onClick={()=>setGizmoSearchModal(null)} style={{...S.btn,padding:"4px 10px"}}>✕ Close</button>
+        </div>
+        <div style={{fontSize:12,color:"var(--text2)",marginBottom:14,lineHeight:1.6}}>
+          This search term has been copied to your clipboard. Open Gizmo and paste it into the search bar to find matching flashcard decks.
+        </div>
+        <div style={{background:"rgba(124,58,237,0.1)",border:"1px solid rgba(124,58,237,0.25)",borderRadius:8,padding:"10px 14px",marginBottom:18,fontFamily:"var(--mono)",fontSize:12,color:"#a78bfa",wordBreak:"break-word"}}>
+          "{gizmoSearchModal}"
+        </div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <a href="https://app.gizmo.ai/decks/public" target="_blank" rel="noopener noreferrer"
+            style={{flex:1,display:"inline-block",background:"linear-gradient(135deg,#5b21b6,#7c3aed)",color:"white",borderRadius:8,padding:"10px 16px",fontSize:13,fontWeight:700,textDecoration:"none",textAlign:"center",boxShadow:"0 2px 12px rgba(124,58,237,0.3)"}}>
+            🔗 Open Gizmo →
+          </a>
+          <button onClick={()=>setGizmoSearchModal(null)} style={{...S.btn,padding:"10px 16px"}}>Done</button>
+        </div>
+      </div>
     </div>}
     {gizmoModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.78)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
       <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:16,padding:28,width:"100%",maxWidth:540,maxHeight:"85vh",display:"flex",flexDirection:"column"}}>
