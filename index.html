@@ -2261,6 +2261,145 @@ function ShortcutsModal({onClose}){
   </div>;
 }
 
+// ─── TUTORIAL MODAL ───────────────────────────────────────────────────────────
+const TUTORIAL_STEPS=[
+  {
+    emoji:"👋",
+    title:"Welcome to GCSE Tracker!",
+    body:"This quick tour covers every feature so you can hit the ground running. Use the arrows or keyboard to navigate — it only takes 2 minutes.",
+    hint:null,
+    accent:"var(--accent)",
+  },
+  {
+    emoji:"📅",
+    title:"Timetable",
+    body:"Build your weekly revision schedule on the Timetable tab. Click a slot to pick subjects — you can assign multiple subjects per slot. Toggle edit mode with the pencil button, then hit the ✨ AI Optimise button to let the AI rearrange it for you based on your weakest subjects.",
+    hint:"💡 Triple science users pick Biology / Chemistry / Physics separately. Combined science users pick \"Science\".",
+    accent:"#34d399",
+  },
+  {
+    emoji:"🏆",
+    title:"Grade Tracker",
+    body:"Log target, mock, and predicted grades per subject in the Grades tab. Add past paper results with scores and dates — the app draws a trend graph and estimates your grade using real Summer 2025 grade boundaries. You can also ask \"What do I need?\" for any target grade.",
+    hint:"💡 The grade badge next to each paper (≈ Grade 7) uses official AQA / Edexcel / OCR boundaries.",
+    accent:"#fbbf24",
+  },
+  {
+    emoji:"📖",
+    title:"Spec Tracker",
+    body:"The Spec tab breaks every subject into topics and subtopics. Set each subtopic to Red / Amber / Green to track what you know. Log the date you last revised it — the badge turns red if you haven't touched it in over 2 weeks. Click 📚 on any topic for curated YouTube, SaveMyExams, and PMT links.",
+    hint:"💡 Use the AI Notes button (⚡) on any subtopic to instantly generate revision notes using your AI provider.",
+    accent:"#f87171",
+  },
+  {
+    emoji:"🤖",
+    title:"AI Coach",
+    body:"The AI tab gives you a personal study coach. Start multiple chats — each is saved to the cloud. The AI knows your year group and adapts its tone accordingly. To use it, add a free Groq API key (or OpenRouter) via the ⚙️ AI Setup menu.",
+    hint:"💡 Groq's llama-3.3-70b model is completely free and fast. Get a key at console.groq.com.",
+    accent:"#a78bfa",
+  },
+  {
+    emoji:"📊",
+    title:"Dashboard",
+    body:"The Overview tab is your home screen. It shows your revision streak 🔥, weekly goal progress, upcoming tests, spec coverage per subject, and an AI \"What should I revise now?\" recommendation. Year 11 users also get an exam countdown to the first exam.",
+    hint:"💡 Click the ✏️ on the weekly goal bar to change your target hours.",
+    accent:"var(--accent)",
+  },
+  {
+    emoji:"🍅",
+    title:"Pomodoro Timer",
+    body:"Hit the 🍅 button in the header to open the Pomodoro timer. Pick a duration (15–60 min), choose a subject, and start. Completed sessions are automatically logged to your Revision Log with the subject and duration.",
+    hint:"💡 Keyboard shortcut: press P anywhere to open the Pomodoro timer.",
+    accent:"#fb923c",
+  },
+  {
+    emoji:"📓",
+    title:"Revision Log & Syncing",
+    body:"Every Pomodoro session and manual entry appears in the Log tab, grouped by date and filterable by subject. Your data is synced to the cloud in real time — sign in from any device and it's all there. Download a JSON backup anytime from the user menu.",
+    hint:"💡 You can redo this tutorial anytime from the user menu → \"App Tutorial\".",
+    accent:"#2dd4bf",
+  },
+];
+
+function TutorialModal({onClose}){
+  const [step,setStep]=useState(0);
+  const total=TUTORIAL_STEPS.length;
+  const s=TUTORIAL_STEPS[step];
+  const isLast=step===total-1;
+
+  // Keyboard navigation
+  useEffect(()=>{
+    const handler=(e)=>{
+      if(e.key==="ArrowRight"||e.key==="Enter"){ if(!isLast)setStep(p=>p+1); else{localStorage.setItem('gcse_tutorialDone','1');onClose();} }
+      if(e.key==="ArrowLeft"){ if(step>0)setStep(p=>p-1); }
+      if(e.key==="Escape"){ localStorage.setItem('gcse_tutorialDone','1');onClose(); }
+    };
+    window.addEventListener('keydown',handler);
+    return()=>window.removeEventListener('keydown',handler);
+  },[step,isLast,onClose]);
+
+  const accentHex=s.accent.startsWith("var(")
+    ?({["var(--accent)"]:"#4f8eff",["var(--green)"]:"#34d399"}[s.accent]||"#4f8eff")
+    :s.accent;
+
+  return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",padding:20,backdropFilter:"blur(4px)"}}>
+    <div style={{background:"var(--bg2)",border:`1px solid ${accentHex}44`,borderRadius:20,width:"100%",maxWidth:480,overflow:"hidden",boxShadow:`0 0 60px ${accentHex}22`}}>
+      {/* Progress bar */}
+      <div style={{height:3,background:"var(--border)"}}>
+        <div style={{height:"100%",background:accentHex,width:`${((step+1)/total)*100}%`,transition:"width 0.35s ease",borderRadius:99}}/>
+      </div>
+
+      {/* Content */}
+      <div style={{padding:"28px 28px 20px"}}>
+        {/* Step counter */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <div style={{display:"flex",gap:6}}>
+            {TUTORIAL_STEPS.map((_,i)=><div key={i} style={{width:i===step?20:6,height:6,borderRadius:99,background:i===step?accentHex:i<step?"var(--text3)":"var(--border)",transition:"all 0.3s ease"}}/>)}
+          </div>
+          <button onClick={()=>{localStorage.setItem('gcse_tutorialDone','1');onClose();}}
+            style={{background:"transparent",border:"none",color:"var(--text3)",fontSize:11,cursor:"pointer",fontFamily:"var(--font)",padding:"4px 8px",borderRadius:6,transition:"color 0.15s"}}
+            onMouseEnter={e=>e.currentTarget.style.color="var(--text2)"}
+            onMouseLeave={e=>e.currentTarget.style.color="var(--text3)"}>
+            Skip tour
+          </button>
+        </div>
+
+        {/* Icon */}
+        <div style={{fontSize:48,marginBottom:14,lineHeight:1}}>{s.emoji}</div>
+
+        {/* Title */}
+        <div style={{fontSize:18,fontWeight:700,color:"var(--text)",marginBottom:10,lineHeight:1.3}}>{s.title}</div>
+
+        {/* Body */}
+        <p style={{fontSize:13,color:"var(--text2)",lineHeight:1.7,margin:"0 0 14px"}}>{s.body}</p>
+
+        {/* Hint */}
+        {s.hint&&<div style={{background:`${accentHex}12`,border:`1px solid ${accentHex}33`,borderRadius:10,padding:"10px 14px",fontSize:12,color:"var(--text2)",lineHeight:1.6}}>
+          {s.hint}
+        </div>}
+      </div>
+
+      {/* Footer */}
+      <div style={{padding:"16px 28px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",borderTop:"1px solid var(--border)"}}>
+        <button onClick={()=>setStep(p=>p-1)} disabled={step===0}
+          style={{background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:8,padding:"8px 18px",color:step===0?"var(--border)":"var(--text2)",cursor:step===0?"default":"pointer",fontFamily:"var(--font)",fontSize:13,transition:"all 0.15s"}}>
+          ← Back
+        </button>
+        <div style={{fontSize:11,color:"var(--text3)",fontFamily:"var(--mono)"}}>{step+1} / {total}</div>
+        <button onClick={()=>{
+            if(isLast){localStorage.setItem('gcse_tutorialDone','1');onClose();}
+            else setStep(p=>p+1);
+          }}
+          style={{background:accentHex,border:"none",borderRadius:8,padding:"8px 22px",color:"#fff",cursor:"pointer",fontFamily:"var(--font)",fontSize:13,fontWeight:600,transition:"opacity 0.15s"}}
+          onMouseEnter={e=>e.currentTarget.style.opacity="0.85"}
+          onMouseLeave={e=>e.currentTarget.style.opacity="1"}>
+          {isLast?"Let's go! 🚀":"Next →"}
+        </button>
+      </div>
+    </div>
+  </div>;
+}
+
 // ─── FEEDBACK MODAL ───────────────────────────────────────────────────────────
 function FeedbackModal({onClose,user,yearGroup}){
   const TYPES=["Feature request","Bug report","New subject / spec","Other"];
@@ -2352,6 +2491,7 @@ function App(){
   const [yearGroup,setYearGroupRaw]=useState("11");
   const [showYearModal,setShowYearModal]=useState(false);
   const [showFeedback,setShowFeedback]=useState(false);
+  const [showTutorial,setShowTutorial]=useState(false);
   const saveTimer=useRef(null);
   const menuRef=useRef(null);
   const tabMenuRef=useRef(null);
@@ -2441,6 +2581,7 @@ function App(){
               if(!yg) setTimeout(()=>setShowYearModal(true),400); // slight delay so app renders first
               if(!localStorage.getItem('gcse_weeklyGoal')&&yg){const dg=yg==="10"?300:600;setWeeklyGoalMinsRaw(dg);localStorage.setItem('gcse_weeklyGoal',String(dg));}
               setUser({uid:fbUser.uid,username:snap.username||fbUser.email.replace("@gcsetracker.app","")});
+              if(!localStorage.getItem('gcse_tutorialDone')) setTimeout(()=>setShowTutorial(true),!yg?1400:700);
             }
           }catch(e){console.error(e);}
         }
@@ -2515,6 +2656,7 @@ function App(){
       setWeeklyGoalMinsRaw(defaultGoal);localStorage.setItem('gcse_weeklyGoal',String(defaultGoal));
     }
     setUser({uid,username});
+    if(!localStorage.getItem('gcse_tutorialDone')) setTimeout(()=>setShowTutorial(true),yg?700:1400);
   };
   const handleLogout=async()=>{
     await window.__firebase.logout();
@@ -2539,6 +2681,7 @@ function App(){
     {showSettings&&<Settings groqKey={groqKey} setGroqKey={setGroqKey} openrouterKey={openrouterKey} setOpenrouterKey={setOpenrouterKey} aiProvider={aiProvider} setAiProvider={setAiProvider} onClose={()=>setShowSettings(false)}/>}
     {showShortcuts&&<ShortcutsModal onClose={()=>setShowShortcuts(false)}/>}
     {showFeedback&&<FeedbackModal onClose={()=>setShowFeedback(false)} user={user} yearGroup={yearGroup}/>}
+    {showTutorial&&<TutorialModal onClose={()=>setShowTutorial(false)}/>}
 
     {/* Year group edit modal */}
     {showYearModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.82)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
@@ -2605,6 +2748,7 @@ function App(){
               </label>
               <div style={{borderTop:"1px solid var(--border)",margin:"4px 0"}}/>
               <MenuBtn icon="⌨️" label="Keyboard shortcuts" onClick={()=>{setShowShortcuts(true);setShowMenu(false);}}/>
+              <MenuBtn icon="🎒" label="App tutorial" onClick={()=>{localStorage.removeItem('gcse_tutorialDone');setShowTutorial(true);setShowMenu(false);}}/>
               <MenuBtn icon="💬" label="Send feedback" onClick={()=>{setShowFeedback(true);setShowMenu(false);}}/>
               <MenuBtn icon="🚪" label="Log out" onClick={()=>{handleLogout();setShowMenu(false);}} danger={true}/>
             </div>}
