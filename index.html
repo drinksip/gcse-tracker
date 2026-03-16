@@ -154,18 +154,12 @@ const SUBJECTS = [
     { id:"mu6", name:"Listening & Appraising", subtopics:["Unfamiliar piece analysis","Comparing pieces","Using musical vocabulary","Identifying instruments","Describing context & style","Exam technique & past papers"] },
   ]},
   { id:"spanish", name:"Spanish", board:"AQA", color:"#fb923c", emoji:"🇪🇸", topics:[
-    { id:"sp1", name:"Identity & Culture: Me, Family & Friends", subtopics:["Describing yourself (personality & appearance)","Family structure & relationships","Marriage, partnerships & changing families","Friendships & peer relationships","Role models & influences","Conflict & reconciliation in relationships"] },
-    { id:"sp2", name:"Identity & Culture: Technology", subtopics:["Social media platforms & their uses","Advantages & disadvantages of technology","Impact of internet on daily life","Mobile phones & screen time","Online safety & cyberbullying","Technology & older generations"] },
-    { id:"sp3", name:"Identity & Culture: Free Time", subtopics:["Sports & physical activities","Music, film & TV preferences","Reading habits","Going out (restaurants, cinema, shopping)","Healthy vs unhealthy lifestyles","Free-time activities in Spanish-speaking countries"] },
-    { id:"sp4", name:"Identity & Culture: Customs & Festivals", subtopics:["Spanish & Latin American festivals (e.g. La Tomatina, Día de Muertos)","Religious celebrations & traditions","Food & drink culture","Regional customs across Spain & Latin America","Comparing UK & Spanish traditions","Cultural identity & heritage"] },
-    { id:"sp5", name:"Local Area: Home, Town & Region", subtopics:["Describing your home & ideal home","Types of accommodation","Town & city features (shops, transport, facilities)","Comparing urban & rural areas","Environmental problems in your area","Plans for improving your local area"] },
-    { id:"sp6", name:"Local & Global: Social Issues", subtopics:["Homelessness & poverty","Unemployment & financial inequality","Healthy eating & diet","Addiction (alcohol, smoking, drugs)","Attitudes towards young people","Volunteering & charity work"] },
-    { id:"sp7", name:"Local & Global: Global Issues", subtopics:["Climate change & global warming","Deforestation & loss of biodiversity","Air, water & land pollution","Natural disasters","Fairtrade & ethical consumption","Pressure on natural resources"] },
-    { id:"sp8", name:"Local & Global: Travel & Tourism", subtopics:["Holiday types & preferences","Booking & planning a trip","Describing past holidays","Transport methods","Accommodation (hotel, camping, etc.)","Tourism's impact on local culture & environment"] },
-    { id:"sp9", name:"Current & Future Study: School Life", subtopics:["School subjects & opinions","Describing your school & timetable","School rules & uniform","Comparing school systems (UK vs Spain/Latin America)","Relationships with teachers","Extracurricular activities"] },
-    { id:"sp10", name:"Current & Future Study: Education & Careers", subtopics:["Plans for post-16 education","Applying for jobs & writing a CV","Part-time work & work experience","Career aspirations & motivations","Advantages of languages in the workplace","University vs vocational training"] },
-    { id:"sp11", name:"Grammar", subtopics:["Nouns, gender & articles (definite & indefinite)","Adjective agreement & position","Pronouns (subject, object, reflexive)","Present tense (regular & irregular verbs)","Preterite tense (regular & irregular)","Imperfect tense & contrast with preterite","Future tense (regular & ir a + infinitive)","Conditional tense","Subjunctive (present, expressions of doubt/wish)","Ser vs estar","Modal verbs (poder, deber, querer, tener que)","Negatives (no, nunca, nadie, nada, ni...ni)","Questions & exclamations","Prepositions & conjunctions","Word order in complex sentences"] },
-    { id:"sp12", name:"Skills & Exam Technique", subtopics:["Listening: strategies for understanding native speakers","Reading: dealing with unknown vocabulary","Writing: structuring responses & extending answers","Speaking: role play preparation & spontaneous response","Speaking: photo card technique","Translation (Spanish to English & English to Spanish)","Using a range of tenses confidently","Manipulating language for higher marks"] },
+    { id:"sp1", name:"Identity & Culture", subtopics:["Family, relationships & marriage","Friendships & role models","Social media & technology","Free time: sport, music & going out","Healthy vs unhealthy lifestyles","Customs, festivals & food culture"] },
+    { id:"sp2", name:"Local, National & Global", subtopics:["Home, town & local area","Urban vs rural life & the environment","Homelessness, poverty & social issues","Healthy living & addiction","Climate change, pollution & global issues","Fairtrade, volunteering & charity"] },
+    { id:"sp3", name:"Travel & Tourism", subtopics:["Holiday types, transport & accommodation","Booking & planning trips","Describing past & future holidays","Tourism's cultural & environmental impact","Comparing Spanish-speaking countries","Regions & landmarks of Spain & Latin America"] },
+    { id:"sp4", name:"Current & Future Study / Employment", subtopics:["School subjects, rules & uniform","Comparing UK & Spanish school systems","Work experience & part-time jobs","Career aspirations & job applications","Post-16 options: sixth form vs vocational","Advantages of learning languages"] },
+    { id:"sp5", name:"Grammar", subtopics:["Nouns, gender, articles & adjective agreement","Pronouns (subject, object, reflexive)","Present tense (regular & irregular, including stem-changing)","Preterite tense (regular & irregular)","Imperfect tense & contrast with preterite","Future tense (will & going to)","Conditional tense","Subjunctive (present — wishes, doubt, emotions)","Ser vs estar","Modal verbs (poder, deber, querer, tener que)","Negatives, questions & word order"] },
+    { id:"sp6", name:"Skills & Exam Technique", subtopics:["Listening: understanding native-speed speech","Reading: inferring meaning & unknown vocabulary","Writing: structuring & extending responses","Speaking: role play preparation","Speaking: photo card technique","Translation (Spanish ↔ English)","Using a range of tenses for higher marks","Exam timing & question strategies"] },
   ]},
   { id:"combined_science", name:"Science", selectorName:"Science (Combined)", board:"AQA", color:"#60a5fa", emoji:"🔬", topics:[
     { id:"csb1", name:"Biology: Cell Biology", subtopics:["Cell structure (prokaryotic & eukaryotic)","Differences between animal & plant cells","Cell division (mitosis)","Cell transport (diffusion, osmosis, active transport)","Microscopy & cell size calculations"] },
@@ -2339,22 +2333,28 @@ const TUTORIAL_STEPS=[
   },
 ];
 
-function TutorialModal({onClose}){
+function TutorialModal({onClose,uid}){
   const [step,setStep]=useState(0);
   const total=TUTORIAL_STEPS.length;
   const s=TUTORIAL_STEPS[step];
   const isLast=step===total-1;
 
+  const markDone=()=>{
+    localStorage.setItem('gcse_tutorialDone','1');
+    if(uid&&window.__firebase) window.__firebase.saveData(uid,{tutorialDone:true});
+    onClose();
+  };
+
   // Keyboard navigation
   useEffect(()=>{
     const handler=(e)=>{
-      if(e.key==="ArrowRight"||e.key==="Enter"){ if(!isLast)setStep(p=>p+1); else{localStorage.setItem('gcse_tutorialDone','1');onClose();} }
+      if(e.key==="ArrowRight"||e.key==="Enter"){ if(!isLast)setStep(p=>p+1); else markDone(); }
       if(e.key==="ArrowLeft"){ if(step>0)setStep(p=>p-1); }
-      if(e.key==="Escape"){ localStorage.setItem('gcse_tutorialDone','1');onClose(); }
+      if(e.key==="Escape"){ markDone(); }
     };
     window.addEventListener('keydown',handler);
     return()=>window.removeEventListener('keydown',handler);
-  },[step,isLast,onClose]);
+  },[step,isLast]);
 
   const accentHex=s.accent.startsWith("var(")
     ?({["var(--accent)"]:"#4f8eff",["var(--green)"]:"#34d399"}[s.accent]||"#4f8eff")
@@ -2374,7 +2374,7 @@ function TutorialModal({onClose}){
           <div style={{display:"flex",gap:6}}>
             {TUTORIAL_STEPS.map((_,i)=><div key={i} style={{width:i===step?20:6,height:6,borderRadius:99,background:i===step?accentHex:i<step?"var(--text3)":"var(--border)",transition:"all 0.3s ease"}}/>)}
           </div>
-          <button onClick={()=>{localStorage.setItem('gcse_tutorialDone','1');onClose();}}
+          <button onClick={markDone}
             style={{background:"transparent",border:"none",color:"var(--text3)",fontSize:11,cursor:"pointer",fontFamily:"var(--font)",padding:"4px 8px",borderRadius:6,transition:"color 0.15s"}}
             onMouseEnter={e=>e.currentTarget.style.color="var(--text2)"}
             onMouseLeave={e=>e.currentTarget.style.color="var(--text3)"}>
@@ -2404,10 +2404,7 @@ function TutorialModal({onClose}){
           ← Back
         </button>
         <div style={{fontSize:11,color:"var(--text3)",fontFamily:"var(--mono)"}}>{step+1} / {total}</div>
-        <button onClick={()=>{
-            if(isLast){localStorage.setItem('gcse_tutorialDone','1');onClose();}
-            else setStep(p=>p+1);
-          }}
+        <button onClick={()=>{ if(isLast)markDone(); else setStep(p=>p+1); }}
           style={{background:accentHex,border:"none",borderRadius:8,padding:"8px 22px",color:"#fff",cursor:"pointer",fontFamily:"var(--font)",fontSize:13,fontWeight:600,transition:"opacity 0.15s"}}
           onMouseEnter={e=>e.currentTarget.style.opacity="0.85"}
           onMouseLeave={e=>e.currentTarget.style.opacity="1"}>
@@ -2599,7 +2596,7 @@ function App(){
               if(!yg) setTimeout(()=>setShowYearModal(true),400); // slight delay so app renders first
               if(!localStorage.getItem('gcse_weeklyGoal')&&yg){const dg=yg==="10"?300:600;setWeeklyGoalMinsRaw(dg);localStorage.setItem('gcse_weeklyGoal',String(dg));}
               setUser({uid:fbUser.uid,username:snap.username||fbUser.email.replace("@gcsetracker.app","")});
-              if(!localStorage.getItem('gcse_tutorialDone')) setTimeout(()=>setShowTutorial(true),!yg?1400:700);
+              if(!snap.tutorialDone&&!localStorage.getItem('gcse_tutorialDone')) setTimeout(()=>setShowTutorial(true),!yg?1400:700);
             }
           }catch(e){console.error(e);}
         }
@@ -2674,7 +2671,7 @@ function App(){
       setWeeklyGoalMinsRaw(defaultGoal);localStorage.setItem('gcse_weeklyGoal',String(defaultGoal));
     }
     setUser({uid,username});
-    if(!localStorage.getItem('gcse_tutorialDone')) setTimeout(()=>setShowTutorial(true),yg?700:1400);
+    if(!data.tutorialDone&&!localStorage.getItem('gcse_tutorialDone')) setTimeout(()=>setShowTutorial(true),yg?700:1400);
   };
   const handleLogout=async()=>{
     await window.__firebase.logout();
@@ -2699,7 +2696,7 @@ function App(){
     {showSettings&&<Settings groqKey={groqKey} setGroqKey={setGroqKey} openrouterKey={openrouterKey} setOpenrouterKey={setOpenrouterKey} aiProvider={aiProvider} setAiProvider={setAiProvider} onClose={()=>setShowSettings(false)}/>}
     {showShortcuts&&<ShortcutsModal onClose={()=>setShowShortcuts(false)}/>}
     {showFeedback&&<FeedbackModal onClose={()=>setShowFeedback(false)} user={user} yearGroup={yearGroup}/>}
-    {showTutorial&&<TutorialModal onClose={()=>setShowTutorial(false)}/>}
+    {showTutorial&&<TutorialModal onClose={()=>setShowTutorial(false)} uid={user?.uid}/>}
 
     {/* Year group edit modal */}
     {showYearModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.82)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
