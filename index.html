@@ -153,6 +153,20 @@ const SUBJECTS = [
     { id:"mu5", name:"Musical Elements & Notation", subtopics:["Melody, rhythm & metre","Harmony & tonality","Texture & structure","Timbre & dynamics","Reading & writing staff notation","Identifying musical devices"] },
     { id:"mu6", name:"Listening & Appraising", subtopics:["Unfamiliar piece analysis","Comparing pieces","Using musical vocabulary","Identifying instruments","Describing context & style","Exam technique & past papers"] },
   ]},
+  { id:"spanish", name:"Spanish", board:"AQA", color:"#fb923c", emoji:"🇪🇸", topics:[
+    { id:"sp1", name:"Identity & Culture: Me, Family & Friends", subtopics:["Describing yourself (personality & appearance)","Family structure & relationships","Marriage, partnerships & changing families","Friendships & peer relationships","Role models & influences","Conflict & reconciliation in relationships"] },
+    { id:"sp2", name:"Identity & Culture: Technology", subtopics:["Social media platforms & their uses","Advantages & disadvantages of technology","Impact of internet on daily life","Mobile phones & screen time","Online safety & cyberbullying","Technology & older generations"] },
+    { id:"sp3", name:"Identity & Culture: Free Time", subtopics:["Sports & physical activities","Music, film & TV preferences","Reading habits","Going out (restaurants, cinema, shopping)","Healthy vs unhealthy lifestyles","Free-time activities in Spanish-speaking countries"] },
+    { id:"sp4", name:"Identity & Culture: Customs & Festivals", subtopics:["Spanish & Latin American festivals (e.g. La Tomatina, Día de Muertos)","Religious celebrations & traditions","Food & drink culture","Regional customs across Spain & Latin America","Comparing UK & Spanish traditions","Cultural identity & heritage"] },
+    { id:"sp5", name:"Local Area: Home, Town & Region", subtopics:["Describing your home & ideal home","Types of accommodation","Town & city features (shops, transport, facilities)","Comparing urban & rural areas","Environmental problems in your area","Plans for improving your local area"] },
+    { id:"sp6", name:"Local & Global: Social Issues", subtopics:["Homelessness & poverty","Unemployment & financial inequality","Healthy eating & diet","Addiction (alcohol, smoking, drugs)","Attitudes towards young people","Volunteering & charity work"] },
+    { id:"sp7", name:"Local & Global: Global Issues", subtopics:["Climate change & global warming","Deforestation & loss of biodiversity","Air, water & land pollution","Natural disasters","Fairtrade & ethical consumption","Pressure on natural resources"] },
+    { id:"sp8", name:"Local & Global: Travel & Tourism", subtopics:["Holiday types & preferences","Booking & planning a trip","Describing past holidays","Transport methods","Accommodation (hotel, camping, etc.)","Tourism's impact on local culture & environment"] },
+    { id:"sp9", name:"Current & Future Study: School Life", subtopics:["School subjects & opinions","Describing your school & timetable","School rules & uniform","Comparing school systems (UK vs Spain/Latin America)","Relationships with teachers","Extracurricular activities"] },
+    { id:"sp10", name:"Current & Future Study: Education & Careers", subtopics:["Plans for post-16 education","Applying for jobs & writing a CV","Part-time work & work experience","Career aspirations & motivations","Advantages of languages in the workplace","University vs vocational training"] },
+    { id:"sp11", name:"Grammar", subtopics:["Nouns, gender & articles (definite & indefinite)","Adjective agreement & position","Pronouns (subject, object, reflexive)","Present tense (regular & irregular verbs)","Preterite tense (regular & irregular)","Imperfect tense & contrast with preterite","Future tense (regular & ir a + infinitive)","Conditional tense","Subjunctive (present, expressions of doubt/wish)","Ser vs estar","Modal verbs (poder, deber, querer, tener que)","Negatives (no, nunca, nadie, nada, ni...ni)","Questions & exclamations","Prepositions & conjunctions","Word order in complex sentences"] },
+    { id:"sp12", name:"Skills & Exam Technique", subtopics:["Listening: strategies for understanding native speakers","Reading: dealing with unknown vocabulary","Writing: structuring responses & extending answers","Speaking: role play preparation & spontaneous response","Speaking: photo card technique","Translation (Spanish to English & English to Spanish)","Using a range of tenses confidently","Manipulating language for higher marks"] },
+  ]},
   { id:"combined_science", name:"Science", selectorName:"Science (Combined)", board:"AQA", color:"#60a5fa", emoji:"🔬", topics:[
     { id:"csb1", name:"Biology: Cell Biology", subtopics:["Cell structure (prokaryotic & eukaryotic)","Differences between animal & plant cells","Cell division (mitosis)","Cell transport (diffusion, osmosis, active transport)","Microscopy & cell size calculations"] },
     { id:"csb2", name:"Biology: Organisation", subtopics:["Digestive system & enzymes","Heart & blood vessels","Blood components","Lungs & gas exchange","Non-communicable diseases","Plant tissues & transport","Transpiration factors"] },
@@ -183,7 +197,6 @@ const EXTRA_SUBJECTS = [
   { id:"media",    name:"Media Studies", color:"#67e8f9", emoji:"🎬" },
   { id:"pe",       name:"PE Studies",    color:"var(--green)", emoji:"⚽" },
   { id:"french",   name:"French",        color:"var(--accent)", emoji:"🇫🇷" },
-  { id:"spanish",  name:"Spanish",       color:"#fb923c", emoji:"🇪🇸" },
 ];
 const ALL_SUBJECTS = [...SUBJECTS, ...EXTRA_SUBJECTS];
 
@@ -224,6 +237,9 @@ const GRADE_BOUNDARIES={
   // AQA German Higher — max 240
   german:      {board:"AQA",    tier:"Higher", max:240, raw:{9:205,8:184,7:163,6:144,5:126,4:108,3:99},
                 pct:{9:85,8:77,7:68,6:60,5:53,4:45,3:41}},
+  // AQA Spanish Higher — max 240
+  spanish:     {board:"AQA",    tier:"Higher", max:240, raw:{9:203,8:179,7:155,6:139,5:124,4:109,3:101},
+                pct:{9:85,8:75,7:65,6:58,5:52,4:45,3:42}},
   // AQA Geography — max 200
   geography:   {board:"AQA",    tier:"",       max:200, raw:{9:154,8:141,7:129,6:115,5:102,4:89,3:65,2:41,1:18},
                 pct:{9:77,8:71,7:65,6:58,5:51,4:45,3:33,2:21,1:9}},
@@ -270,6 +286,8 @@ const RESOURCE_LINKS={
                      ytChannels:["Mr Salles Teaches English","Mr Bruff"]},
   german:           {sme:"https://www.savemyexams.com/gcse/german/aqa/",              pmt:"https://www.physicsandmathstutor.com/german-revision/gcse-aqa/",
                      ytChannels:["Herr Antrim","GCSE German"]},
+  spanish:          {sme:"https://www.savemyexams.com/gcse/spanish/aqa/",             pmt:"https://language-gym.com", pmtLabel:"Language Gym",
+                     ytChannels:["SpanishPodcast","GCSE Spanish"]},
   geography:        {sme:"https://www.savemyexams.com/gcse/geography/aqa/",           pmt:"https://www.physicsandmathstutor.com/geography-revision/gcse-aqa/",
                      ytChannels:["Geog with BuckleMyShoeBro","Geography Gang"]},
   cs:               {sme:"https://www.savemyexams.com/gcse/computer-science/ocr/",    pmt:"https://www.physicsandmathstutor.com/computer-science-revision/gcse-ocr/",
@@ -1399,7 +1417,7 @@ function ResourcesModal({subj,topic,onClose,gizmoSearch}){
           </a>
         )}
         {(links.sme||links.pmt)&&<div style={{fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:1,fontFamily:"var(--mono)",marginTop:4}}>📝 Notes & Questions</div>}
-        {[links.sme&&["SaveMyExams",links.sme,"var(--accent)"],links.pmt&&["Physics & Maths Tutor",links.pmt,"#34d399"]].filter(Boolean).map(([label,url,col])=>
+        {[links.sme&&["SaveMyExams",links.sme,"var(--accent)"],links.pmt&&[links.pmtLabel||"Physics & Maths Tutor",links.pmt,"#34d399"]].filter(Boolean).map(([label,url,col])=>
           <a key={label} href={url} target="_blank" rel="noopener noreferrer"
             style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:8,background:"var(--bg3)",border:"1px solid var(--border)",textDecoration:"none"}}>
             <span style={{fontSize:18}}>📄</span>
